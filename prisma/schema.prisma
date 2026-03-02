@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  cases         Case[]
+  auditLogs     AuditLog[]
+}
+
+model Case {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects    Subject[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Subject {
+  id                String              @id @default(uuid())
+  fullName          String
+  phoneE164         String?
+  email             String?
+  address           String?
+  city              String?
+  state             String?
+  notes             String?
+  caseId            String
+  case              Case                @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  enrichmentResults EnrichmentResult[]
+  auditLogs         AuditLog[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([caseId])
+}
+
+model EnrichmentResult {
+  id              String   @id @default(uuid())
+  subjectId       String
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  provider        String
+  providerType    String   // 'phone_lookup' | 'web_search'
+  payload         Json     @db.JsonB
+  confidenceScore Float    @default(0)
+  timestamp       DateTime @default(now())
+
+  @@index([subjectId])
+  @@index([provider])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  metadata  Json     @db.JsonB
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([subjectId])
+  @@index([action])
+}
