@@ -30,7 +30,15 @@ next-env.d.ts
 dist/
 dist
 
-# Environment files (comprehensive coverage)
+# Environment files – NEVER commit real secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+# Allow the template and docker template (no real secrets)
+!.env.example
+!.env.docker
 *token.json*
 *credentials.json*
 
