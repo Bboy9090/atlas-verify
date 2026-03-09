@@ -1,0 +1,25 @@
+{
+  "buildCommand": "npx prisma generate && next build",
+  "devCommand": "next dev",
+  "installCommand": "yarn install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection string (e.g. from Neon, Supabase, or Railway)",
+      "required": true
+    },
+    "NEXTAUTH_SECRET": {
+      "description": "Random 32-character secret for NextAuth session signing (run: openssl rand -base64 32)",
+      "required": true
+    },
+    "NEXTAUTH_URL": {
+      "description": "Full public URL of your deployment (set automatically by Vercel as VERCEL_URL)",
+      "required": false
+    },
+    "NEXT_PUBLIC_BASE_URL": {
+      "description": "Same as NEXTAUTH_URL – the public URL of your deployment",
+      "required": false
+    }
+  }
+}
