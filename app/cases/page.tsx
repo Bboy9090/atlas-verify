@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, FileText, Users, Calendar, Search, ArrowRight } from 'lucide-react'
+import { Plus, FileText, Users, Calendar, Search, ArrowRight, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,11 +20,18 @@ interface Case {
   id: string
   title: string
   description: string | null
+  status: string
   createdAt: string
   updatedAt: string
   _count: {
     subjects: number
   }
+}
+
+const statusConfig: Record<string, { label: string; className: string }> = {
+  open: { label: 'Open', className: 'bg-green-500/20 text-green-300 border-green-500/30' },
+  'in-progress': { label: 'In Progress', className: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+  closed: { label: 'Closed', className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
 }
 
 export default function CasesPage() {
@@ -31,8 +40,9 @@ export default function CasesPage() {
   const [cases, setCases] = useState<Case[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [newCase, setNewCase] = useState({ title: '', description: '' })
+  const [newCase, setNewCase] = useState({ title: '', description: '', status: 'open' })
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -54,7 +64,7 @@ export default function CasesPage() {
         const data = await res.json()
         setCases(data)
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch cases')
     } finally {
       setLoading(false)
@@ -79,23 +89,43 @@ export default function CasesPage() {
       if (res.ok) {
         toast.success('Case created successfully')
         setDialogOpen(false)
-        setNewCase({ title: '', description: '' })
+        setNewCase({ title: '', description: '', status: 'open' })
         fetchCases()
       } else {
         const data = await res.json()
         toast.error(data.error || 'Failed to create case')
       }
-    } catch (error) {
+    } catch {
       toast.error('An error occurred')
     } finally {
       setCreating(false)
     }
   }
 
-  const filteredCases = cases.filter(c =>
-    c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-  )
+  const handleExport = async () => {
+    try {
+      const res = await fetch('/api/export?type=cases')
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'cases.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Cases exported')
+    } catch {
+      toast.error('Export failed')
+    }
+  }
+
+  const filteredCases = cases.filter(c => {
+    const matchesSearch =
+      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
+    const matchesStatus = statusFilter === 'all' || c.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
 
   if (status === 'loading' || loading) {
     return (
@@ -116,60 +146,100 @@ export default function CasesPage() {
             <h1 className="text-3xl font-bold text-white">Case Files</h1>
             <p className="text-slate-400">Manage your investigation cases</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" /> New Case
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-slate-800 border-slate-700">
-              <DialogHeader>
-                <DialogTitle className="text-white">Create New Case</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreateCase} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title" className="text-slate-300">Title</Label>
-                  <Input
-                    id="title"
-                    value={newCase.title}
-                    onChange={(e) => setNewCase({ ...newCase, title: e.target.value })}
-                    placeholder="e.g., Background Check - John Doe"
-                    className="bg-slate-900 border-slate-600 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description" className="text-slate-300">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={newCase.description}
-                    onChange={(e) => setNewCase({ ...newCase, description: e.target.value })}
-                    placeholder="Brief description of the case..."
-                    className="bg-slate-900 border-slate-600 text-white"
-                    rows={3}
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-slate-600 text-slate-300">
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={creating}>
-                    {creating ? 'Creating...' : 'Create Case'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="border-slate-600 text-slate-300 hover:text-white"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="h-4 w-4 mr-2" /> New Case
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-slate-800 border-slate-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Create New Case</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreateCase} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title" className="text-slate-300">Title</Label>
+                    <Input
+                      id="title"
+                      value={newCase.title}
+                      onChange={(e) => setNewCase({ ...newCase, title: e.target.value })}
+                      placeholder="e.g., Background Check - John Doe"
+                      className="bg-slate-900 border-slate-600 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description" className="text-slate-300">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={newCase.description}
+                      onChange={(e) => setNewCase({ ...newCase, description: e.target.value })}
+                      placeholder="Brief description of the case..."
+                      className="bg-slate-900 border-slate-600 text-white"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status" className="text-slate-300">Status</Label>
+                    <Select
+                      value={newCase.status}
+                      onValueChange={(value) => setNewCase({ ...newCase, status: value })}
+                    >
+                      <SelectTrigger className="bg-slate-900 border-slate-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectItem value="open" className="text-slate-200">Open</SelectItem>
+                        <SelectItem value="in-progress" className="text-slate-200">In Progress</SelectItem>
+                        <SelectItem value="closed" className="text-slate-200">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-slate-600 text-slate-300">
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={creating}>
+                      {creating ? 'Creating...' : 'Create Case'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search cases..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
-          />
+        {/* Search + Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search cases..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40 bg-slate-800 border-slate-700 text-white">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-700">
+              <SelectItem value="all" className="text-slate-200">All Statuses</SelectItem>
+              <SelectItem value="open" className="text-slate-200">Open</SelectItem>
+              <SelectItem value="in-progress" className="text-slate-200">In Progress</SelectItem>
+              <SelectItem value="closed" className="text-slate-200">Closed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Cases Grid */}
@@ -183,7 +253,7 @@ export default function CasesPage() {
               <p className="text-slate-400 text-center max-w-md mb-4">
                 {cases.length === 0
                   ? 'Create your first case to start managing subjects and running enrichment.'
-                  : 'Try adjusting your search terms.'}
+                  : 'Try adjusting your search or filter.'}
               </p>
               {cases.length === 0 && (
                 <Button onClick={() => setDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
@@ -194,35 +264,41 @@ export default function CasesPage() {
           </Card>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCases.map((caseItem) => (
-              <Link key={caseItem.id} href={`/cases/${caseItem.id}`}>
-                <Card className="bg-slate-800/50 border-slate-700 hover:border-blue-500/50 transition-colors cursor-pointer h-full">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center justify-between">
-                      <span className="truncate">{caseItem.title}</span>
-                      <ArrowRight className="h-5 w-5 text-slate-500 flex-shrink-0" />
-                    </CardTitle>
-                    {caseItem.description && (
-                      <CardDescription className="text-slate-400 line-clamp-2">
-                        {caseItem.description}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4 text-sm text-slate-400">
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{caseItem._count.subjects} subjects</span>
+            {filteredCases.map((caseItem) => {
+              const sc = statusConfig[caseItem.status] ?? statusConfig.open
+              return (
+                <Link key={caseItem.id} href={`/cases/${caseItem.id}`}>
+                  <Card className="bg-slate-800/50 border-slate-700 hover:border-blue-500/50 transition-colors cursor-pointer h-full">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center justify-between gap-2">
+                        <span className="truncate">{caseItem.title}</span>
+                        <ArrowRight className="h-5 w-5 text-slate-500 flex-shrink-0" />
+                      </CardTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className={`text-xs ${sc.className}`}>{sc.label}</Badge>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{new Date(caseItem.createdAt).toLocaleDateString()}</span>
+                      {caseItem.description && (
+                        <CardDescription className="text-slate-400 line-clamp-2 mt-1">
+                          {caseItem.description}
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4 text-sm text-slate-400">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          <span>{caseItem._count.subjects} subjects</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{new Date(caseItem.createdAt).toLocaleDateString()}</span>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>

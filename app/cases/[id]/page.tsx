@@ -4,15 +4,16 @@ import { useEffect, useState, use } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, UserCircle, Search, Phone, Mail, MapPin, Trash2, Edit, Play, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, UserCircle, Search, Phone, Mail, MapPin, Trash2, Edit, Play, Loader2, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { DashboardLayout } from '@/components/dashboard-layout'
 
@@ -47,8 +48,15 @@ interface Case {
   id: string
   title: string
   description: string | null
+  status: string
   createdAt: string
   subjects: Subject[]
+}
+
+const statusConfig: Record<string, { label: string; className: string }> = {
+  open: { label: 'Open', className: 'bg-green-500/20 text-green-300 border-green-500/30' },
+  'in-progress': { label: 'In Progress', className: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+  closed: { label: 'Closed', className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
 }
 
 export default function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -65,6 +73,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
   const [creating, setCreating] = useState(false)
   const [enrichingSubjects, setEnrichingSubjects] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState('subjects')
+  const [updatingStatus, setUpdatingStatus] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -88,10 +97,49 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
         toast.error('Case not found')
         router.push('/cases')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch case')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!caseData || updatingStatus) return
+    setUpdatingStatus(true)
+    try {
+      const res = await fetch(`/api/cases/${resolvedParams.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+      if (res.ok) {
+        setCaseData(prev => prev ? { ...prev, status: newStatus } : prev)
+        toast.success('Case status updated')
+      } else {
+        toast.error('Failed to update status')
+      }
+    } catch {
+      toast.error('An error occurred')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const handleExportSubjects = async () => {
+    try {
+      const res = await fetch(`/api/export?type=subjects&caseId=${resolvedParams.id}`)
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `subjects-${resolvedParams.id}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Subjects exported')
+    } catch {
+      toast.error('Export failed')
     }
   }
 
@@ -124,7 +172,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
         const data = await res.json()
         toast.error(data.error || 'Operation failed')
       }
-    } catch (error) {
+    } catch {
       toast.error('An error occurred')
     } finally {
       setCreating(false)
@@ -145,7 +193,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       } else {
         toast.error('Failed to delete subject')
       }
-    } catch (error) {
+    } catch {
       toast.error('An error occurred')
     }
   }
@@ -169,7 +217,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
         const data = await res.json()
         toast.error(data.error || 'Enrichment failed')
       }
-    } catch (error) {
+    } catch {
       toast.error('An error occurred')
     } finally {
       setEnrichingSubjects(prev => {
@@ -216,113 +264,140 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
 
   if (!caseData) return null
 
+  const sc = statusConfig[caseData.status] ?? statusConfig.open
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <Link href="/cases">
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white mt-1">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-white">{caseData.title}</h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-bold text-white">{caseData.title}</h1>
+              <Badge variant="outline" className={`text-xs ${sc.className}`}>{sc.label}</Badge>
+            </div>
             {caseData.description && (
-              <p className="text-slate-400">{caseData.description}</p>
+              <p className="text-slate-400 mt-1">{caseData.description}</p>
             )}
           </div>
-          <Dialog open={subjectDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" /> Add Subject
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-slate-800 border-slate-700 max-w-lg">
-              <DialogHeader>
-                <DialogTitle className="text-white">
-                  {editSubject ? 'Edit Subject' : 'Add New Subject'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreateOrUpdateSubject} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 space-y-2">
-                    <Label className="text-slate-300">Full Name *</Label>
-                    <Input
-                      value={newSubject.fullName}
-                      onChange={(e) => setNewSubject({ ...newSubject, fullName: e.target.value })}
-                      placeholder="John Doe"
-                      className="bg-slate-900 border-slate-600 text-white"
-                    />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Status selector */}
+            <Select value={caseData.status} onValueChange={handleStatusChange} disabled={updatingStatus}>
+              <SelectTrigger className="w-36 bg-slate-800 border-slate-600 text-white text-sm h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="open" className="text-slate-200">Open</SelectItem>
+                <SelectItem value="in-progress" className="text-slate-200">In Progress</SelectItem>
+                <SelectItem value="closed" className="text-slate-200">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportSubjects}
+              className="border-slate-600 text-slate-300 hover:text-white h-9"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Export
+            </Button>
+            <Dialog open={subjectDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700 h-9">
+                  <Plus className="h-4 w-4 mr-2" /> Add Subject
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-slate-800 border-slate-700 max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="text-white">
+                    {editSubject ? 'Edit Subject' : 'Add New Subject'}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreateOrUpdateSubject} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-slate-300">Full Name *</Label>
+                      <Input
+                        value={newSubject.fullName}
+                        onChange={(e) => setNewSubject({ ...newSubject, fullName: e.target.value })}
+                        placeholder="John Doe"
+                        className="bg-slate-900 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Phone (E.164)</Label>
+                      <Input
+                        value={newSubject.phoneE164}
+                        onChange={(e) => setNewSubject({ ...newSubject, phoneE164: e.target.value })}
+                        placeholder="+14155551234"
+                        className="bg-slate-900 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Email</Label>
+                      <Input
+                        type="email"
+                        value={newSubject.email}
+                        onChange={(e) => setNewSubject({ ...newSubject, email: e.target.value })}
+                        placeholder="john@example.com"
+                        className="bg-slate-900 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-slate-300">Address</Label>
+                      <Input
+                        value={newSubject.address}
+                        onChange={(e) => setNewSubject({ ...newSubject, address: e.target.value })}
+                        placeholder="123 Main St"
+                        className="bg-slate-900 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">City</Label>
+                      <Input
+                        value={newSubject.city}
+                        onChange={(e) => setNewSubject({ ...newSubject, city: e.target.value })}
+                        placeholder="San Francisco"
+                        className="bg-slate-900 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">State</Label>
+                      <Input
+                        value={newSubject.state}
+                        onChange={(e) => setNewSubject({ ...newSubject, state: e.target.value })}
+                        placeholder="CA"
+                        className="bg-slate-900 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-slate-300">Notes</Label>
+                      <Textarea
+                        value={newSubject.notes}
+                        onChange={(e) => setNewSubject({ ...newSubject, notes: e.target.value })}
+                        placeholder="Additional notes..."
+                        className="bg-slate-900 border-slate-600 text-white"
+                        rows={2}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Phone (E.164)</Label>
-                    <Input
-                      value={newSubject.phoneE164}
-                      onChange={(e) => setNewSubject({ ...newSubject, phoneE164: e.target.value })}
-                      placeholder="+14155551234"
-                      className="bg-slate-900 border-slate-600 text-white"
-                    />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={closeDialog} className="border-slate-600 text-slate-300">
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={creating}>
+                      {creating ? 'Saving...' : editSubject ? 'Update' : 'Add Subject'}
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Email</Label>
-                    <Input
-                      type="email"
-                      value={newSubject.email}
-                      onChange={(e) => setNewSubject({ ...newSubject, email: e.target.value })}
-                      placeholder="john@example.com"
-                      className="bg-slate-900 border-slate-600 text-white"
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label className="text-slate-300">Address</Label>
-                    <Input
-                      value={newSubject.address}
-                      onChange={(e) => setNewSubject({ ...newSubject, address: e.target.value })}
-                      placeholder="123 Main St"
-                      className="bg-slate-900 border-slate-600 text-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">City</Label>
-                    <Input
-                      value={newSubject.city}
-                      onChange={(e) => setNewSubject({ ...newSubject, city: e.target.value })}
-                      placeholder="San Francisco"
-                      className="bg-slate-900 border-slate-600 text-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">State</Label>
-                    <Input
-                      value={newSubject.state}
-                      onChange={(e) => setNewSubject({ ...newSubject, state: e.target.value })}
-                      placeholder="CA"
-                      className="bg-slate-900 border-slate-600 text-white"
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label className="text-slate-300">Notes</Label>
-                    <Textarea
-                      value={newSubject.notes}
-                      onChange={(e) => setNewSubject({ ...newSubject, notes: e.target.value })}
-                      placeholder="Additional notes..."
-                      className="bg-slate-900 border-slate-600 text-white"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={closeDialog} className="border-slate-600 text-slate-300">
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={creating}>
-                    {creating ? 'Saving...' : editSubject ? 'Update' : 'Add Subject'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -459,7 +534,10 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                           </CardDescription>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-white">
+                          <div className={`text-2xl font-bold ${
+                            result.confidenceScore >= 0.8 ? 'text-green-400' :
+                            result.confidenceScore >= 0.6 ? 'text-yellow-400' : 'text-red-400'
+                          }`}>
                             {Math.round(result.confidenceScore * 100)}%
                           </div>
                           <div className="text-xs text-slate-400">Confidence</div>

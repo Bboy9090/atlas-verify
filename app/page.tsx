@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Shield, ArrowRight, CheckCircle2, Search, Users, FileText } from 'lucide-react'
+import { Shield, ArrowRight, CheckCircle2, Search, Users, FileText, LayoutDashboard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -19,7 +19,7 @@ export default function HomePage() {
   }
 
   if (session) {
-    redirect('/cases')
+    redirect('/dashboard')
   }
 
   return (
@@ -77,7 +77,7 @@ export default function HomePage() {
 
       {/* Features Section */}
       <section className="container mx-auto px-4 py-20">
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
               <FileText className="h-12 w-12 text-blue-500 mb-4" />

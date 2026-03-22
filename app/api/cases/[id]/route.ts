@@ -78,13 +78,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json()
-    const { title, description } = body
+    const { title, description, status } = body
 
+    const validStatuses = ['open', 'in-progress', 'closed']
     const updatedCase = await prisma.case.update({
       where: { id },
       data: {
         title: title || existingCase.title,
-        description: description !== undefined ? description : existingCase.description
+        description: description !== undefined ? description : existingCase.description,
+        status: status && validStatuses.includes(status) ? status : existingCase.status,
       }
     })
 
