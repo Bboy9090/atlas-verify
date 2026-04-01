@@ -26,7 +26,6 @@ const mockPhoneProvider: EnrichmentProvider = {
       lineType: ['mobile', 'landline', 'voip'][Math.floor(Math.random() * 3)],
       countryCode: '+1',
       nationalFormat: `(${cleanNumber.slice(0, 3)}) ${cleanNumber.slice(3, 6)}-${cleanNumber.slice(6, 10)}`,
-      callerName: null,
       location: {
         city: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix'][Math.floor(Math.random() * 5)],
         state: ['NY', 'CA', 'IL', 'TX', 'AZ'][Math.floor(Math.random() * 5)],

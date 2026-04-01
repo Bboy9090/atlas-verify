@@ -306,9 +306,9 @@ export default function DashboardPage() {
                         {log.subject && (
                           <span className="text-slate-400"> – {log.subject.fullName}</span>
                         )}
-                        {!log.subject && log.metadata?.title && (
-                          <span className="text-slate-400"> – {String(log.metadata.title)}</span>
-                        )}
+                        {!log.subject && typeof log.metadata?.title === 'string' && log.metadata.title ? (
+                          <span className="text-slate-400"> – {log.metadata.title}</span>
+                        ) : null}
                       </p>
                       <p className="text-slate-500 text-xs">
                         {new Date(log.createdAt).toLocaleString()}
