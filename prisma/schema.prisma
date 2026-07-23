@@ -22,6 +22,7 @@ model Case {
   id          String    @id @default(uuid())
   title       String
   description String?
+  status      String    @default("open") // 'open' | 'in-progress' | 'closed'
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjects    Subject[]
@@ -29,6 +30,7 @@ model Case {
   updatedAt   DateTime  @updatedAt
 
   @@index([userId])
+  @@index([status])
 }
 
 model Subject {

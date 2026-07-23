@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description } = body
+    const { title, description, status } = body
 
     if (!title) {
       return NextResponse.json(
@@ -73,10 +73,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const validStatuses = ['open', 'in-progress', 'closed']
+    const caseStatus = validStatuses.includes(status) ? status : 'open'
+
     const newCase = await prisma.case.create({
       data: {
         title,
         description: description || null,
+        status: caseStatus,
         userId
       }
     })
