@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { Prisma } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             subjectId,
             provider: provider.name,
             providerType: provider.type,
-            payload: enrichmentPayload as unknown as Record<string, unknown>,
+            payload: enrichmentPayload as unknown as Prisma.InputJsonValue,
             confidenceScore: enrichmentPayload.confidenceScore
           }
         })

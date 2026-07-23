@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import prisma from './prisma'
 import type { AuditAction } from '@/types'
 
@@ -12,7 +13,7 @@ export async function createAuditLog(
       userId,
       action,
       subjectId,
-      metadata
+      metadata: metadata as unknown as Prisma.InputJsonValue
     }
   })
 }
