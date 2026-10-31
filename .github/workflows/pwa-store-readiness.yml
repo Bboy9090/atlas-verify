@@ -1,0 +1,40 @@
+name: PWA Store Readiness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/pwa-register.tsx'
+      - 'public/**'
+      - '.github/workflows/pwa-store-readiness.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/pwa-register.tsx'
+      - 'public/**'
+      - '.github/workflows/pwa-store-readiness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-pwa-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify public PWA contract
+        run: |
+          node -e "const m=require('./public/manifest.json'); if(m.display!=='standalone'||!m.start_url||!m.icons?.length) process.exit(1)"
+          test -s public/sw.js
+          test -s public/offline.html
+          test -s app/privacy/page.tsx
+          test -s app/support/page.tsx
+          ! grep -Eq "(/api/|cases|subjects|enrichment|audit)" public/sw.js || { echo "Service worker must not cache investigation/API data"; exit 1; }
