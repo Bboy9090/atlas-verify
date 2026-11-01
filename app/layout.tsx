@@ -1,6 +1,7 @@
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/components/auth-provider'
+import { PwaRegister } from '@/components/pwa-register'
 
 export const metadata = {
   title: 'AtlasVerify - Subject Intelligence Platform',
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         <AuthProvider>
+          <PwaRegister />
           {children}
           <Toaster />
         </AuthProvider>
