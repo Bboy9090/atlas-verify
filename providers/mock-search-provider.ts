@@ -4,6 +4,13 @@ import { registerProvider } from './enrichment-provider'
 const mockSearchProvider: EnrichmentProvider = {
   name: 'mock_web_search',
   type: 'web_search',
+  sourcePolicy: {
+    sourceKind: 'synthetic',
+    production: false,
+    allowedPurposes: ['development', 'testing', 'demo'],
+    mayPersist: true,
+    notes: 'Synthetic fixture provider. URLs and facts are generated test data, not live search results.'
+  },
   
   async lookup(query: string): Promise<EnrichmentPayload> {
     // Simulate API delay

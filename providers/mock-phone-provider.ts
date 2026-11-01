@@ -4,6 +4,13 @@ import { registerProvider } from './enrichment-provider'
 const mockPhoneProvider: EnrichmentProvider = {
   name: 'mock_phone_lookup',
   type: 'phone_lookup',
+  sourcePolicy: {
+    sourceKind: 'synthetic',
+    production: false,
+    allowedPurposes: ['development', 'testing', 'demo'],
+    mayPersist: true,
+    notes: 'Synthetic fixture provider. Must never be presented as real-world source coverage.'
+  },
   
   async lookup(phoneNumber: string): Promise<EnrichmentPayload> {
     // Simulate API delay

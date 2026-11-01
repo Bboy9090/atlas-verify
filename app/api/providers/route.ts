@@ -6,7 +6,8 @@ export async function GET() {
   try {
     const providers = getAllProviders().map(p => ({
       name: p.name,
-      type: p.type
+      type: p.type,
+      sourcePolicy: p.sourcePolicy
     }))
 
     return NextResponse.json({ providers })

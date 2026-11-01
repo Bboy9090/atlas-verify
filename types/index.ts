@@ -1,6 +1,25 @@
+export type ProviderSourceKind =
+  | 'synthetic'
+  | 'licensed_api'
+  | 'public_web'
+  | 'public_record'
+  | 'user_supplied';
+
+export interface ProviderSourcePolicy {
+  sourceKind: ProviderSourceKind;
+  production: boolean;
+  termsUrl?: string;
+  licenseName?: string;
+  freshnessSeconds?: number;
+  allowedPurposes: string[];
+  mayPersist: boolean;
+  notes?: string;
+}
+
 export interface EnrichmentProvider {
   name: string;
   type: 'phone_lookup' | 'web_search';
+  sourcePolicy: ProviderSourcePolicy;
   lookup(input: string): Promise<EnrichmentPayload>;
 }
 
