@@ -61,9 +61,32 @@ model EnrichmentResult {
   payload         Json     @db.JsonB
   confidenceScore Float    @default(0)
   timestamp       DateTime @default(now())
+  evidenceFacts   EvidenceFact[]
 
   @@index([subjectId])
   @@index([provider])
+}
+
+model EvidenceFact {
+  id                  String           @id @default(uuid())
+  enrichmentResultId  String
+  enrichmentResult    EnrichmentResult @relation(fields: [enrichmentResultId], references: [id], onDelete: Cascade)
+  field               String
+  value               Json             @db.JsonB
+  sourceName          String
+  sourceUrl           String?
+  retrievedAt         DateTime
+  observedAt          DateTime?
+  confidenceScore     Float            @default(0)
+  corroborationCount  Int              @default(0)
+  conflictCount       Int              @default(0)
+  metadata            Json?            @db.JsonB
+  createdAt           DateTime         @default(now())
+
+  @@index([enrichmentResultId])
+  @@index([field])
+  @@index([sourceName])
+  @@index([retrievedAt])
 }
 
 model AuditLog {
