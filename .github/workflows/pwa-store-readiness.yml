@@ -1,6 +1,7 @@
 name: PWA Store Readiness
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
