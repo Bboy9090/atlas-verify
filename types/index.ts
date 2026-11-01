@@ -4,10 +4,24 @@ export interface EnrichmentProvider {
   lookup(input: string): Promise<EnrichmentPayload>;
 }
 
+export interface EvidenceFactInput {
+  field: string;
+  value: unknown;
+  sourceName: string;
+  sourceUrl?: string;
+  retrievedAt: string;
+  observedAt?: string;
+  confidenceScore: number;
+  corroborationCount?: number;
+  conflictCount?: number;
+  metadata?: Record<string, unknown>;
+}
+
 export interface EnrichmentPayload {
   success: boolean;
   data: Record<string, unknown>;
   confidenceScore: number;
+  evidenceFacts?: EvidenceFactInput[];
   error?: string;
 }
 
