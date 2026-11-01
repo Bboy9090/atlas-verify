@@ -30,19 +30,17 @@ jobs:
           cd /tmp/android-shell
           npm init -y
           npm install --ignore-scripts @capacitor/core@7.4.4 @capacitor/cli@7.4.4 @capacitor/android@7.4.4
-          cat > capacitor.config.ts <<'EOF'
-          import type { CapacitorConfig } from '@capacitor/cli';
-          const config: CapacitorConfig = {
-            appId: 'com.bobbysworld.atlasverify',
-            appName: 'AtlasVerify',
-            webDir: 'dist',
-            server: {
-              url: 'https://atlasverify-web-production.up.railway.app',
-              cleartext: false,
-              androidScheme: 'https'
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.bobbysworld.atlasverify",
+            "appName": "AtlasVerify",
+            "webDir": "dist",
+            "server": {
+              "url": "https://atlasverify-web-production.up.railway.app",
+              "cleartext": false,
+              "androidScheme": "https"
             }
-          };
-          export default config;
+          }
           EOF
           cat > dist/index.html <<'EOF'
           <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AtlasVerify</title></head><body><p>Loading AtlasVerify…</p></body></html>
