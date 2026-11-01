@@ -33,10 +33,39 @@ const mockPhoneProvider: EnrichmentProvider = {
       }
     }
 
+    const confidenceScore = 0.75 + Math.random() * 0.2
+    const retrievedAt = new Date().toISOString()
+
     return {
       success: true,
       data: mockData as unknown as Record<string, unknown>,
-      confidenceScore: 0.75 + Math.random() * 0.2 // 0.75 - 0.95
+      confidenceScore, // 0.75 - 0.95
+      evidenceFacts: [
+        {
+          field: 'phone.carrier',
+          value: mockData.carrier,
+          sourceName: 'mock_phone_lookup',
+          retrievedAt,
+          confidenceScore,
+          metadata: { synthetic: true }
+        },
+        {
+          field: 'phone.lineType',
+          value: mockData.lineType,
+          sourceName: 'mock_phone_lookup',
+          retrievedAt,
+          confidenceScore,
+          metadata: { synthetic: true }
+        },
+        {
+          field: 'phone.location',
+          value: mockData.location,
+          sourceName: 'mock_phone_lookup',
+          retrievedAt,
+          confidenceScore,
+          metadata: { synthetic: true }
+        }
+      ]
     }
   }
 }
