@@ -87,7 +87,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             provider: provider.name,
             providerType: provider.type,
             payload: enrichmentPayload as unknown as Prisma.InputJsonValue,
-            confidenceScore: enrichmentPayload.confidenceScore
+            confidenceScore: enrichmentPayload.confidenceScore,
+            evidenceFacts: enrichmentPayload.evidenceFacts?.length
+              ? {
+                  create: enrichmentPayload.evidenceFacts.map((fact) => ({
+                    field: fact.field,
+                    value: fact.value as Prisma.InputJsonValue,
+                    sourceName: fact.sourceName,
+                    sourceUrl: fact.sourceUrl,
+                    retrievedAt: new Date(fact.retrievedAt),
+                    observedAt: fact.observedAt ? new Date(fact.observedAt) : undefined,
+                    confidenceScore: fact.confidenceScore,
+                    corroborationCount: fact.corroborationCount ?? 0,
+                    conflictCount: fact.conflictCount ?? 0,
+                    metadata: fact.metadata
+                      ? (fact.metadata as Prisma.InputJsonValue)
+                      : undefined,
+                  }))
+                }
+              : undefined
+          },
+          include: {
+            evidenceFacts: true
           }
         })
 

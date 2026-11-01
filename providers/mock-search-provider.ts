@@ -43,10 +43,22 @@ const mockSearchProvider: EnrichmentProvider = {
       totalResults: 3
     }
 
+    const confidenceScore = 0.6 + Math.random() * 0.3
+    const retrievedAt = new Date().toISOString()
+
     return {
       success: true,
       data: mockResults as unknown as Record<string, unknown>,
-      confidenceScore: 0.6 + Math.random() * 0.3 // 0.6 - 0.9
+      confidenceScore, // 0.6 - 0.9
+      evidenceFacts: mockResults.results.map((result, index) => ({
+        field: `web.result.${index}`,
+        value: result,
+        sourceName: result.source,
+        sourceUrl: result.url,
+        retrievedAt,
+        confidenceScore,
+        metadata: { synthetic: true }
+      }))
     }
   }
 }
