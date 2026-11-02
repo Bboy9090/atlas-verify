@@ -52,6 +52,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { providerName } = body
 
     let providers = getAllProviders()
+
+    const allowSyntheticProviders =
+      process.env.NODE_ENV !== 'production' ||
+      process.env.ALLOW_SYNTHETIC_PROVIDERS === 'true'
+
+    providers = providers.filter(provider =>
+      provider.sourcePolicy.production ||
+      (allowSyntheticProviders && provider.sourcePolicy.sourceKind === 'synthetic')
+    )
     
     // If specific provider requested
     if (providerName) {
@@ -62,7 +71,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           { status: 400 }
         )
       }
+      const allowed =
+        provider.sourcePolicy.production ||
+        (allowSyntheticProviders && provider.sourcePolicy.sourceKind === 'synthetic')
+
+      if (!allowed) {
+        return NextResponse.json(
+          {
+            error: `Provider '${providerName}' is not enabled for this environment`,
+            sourceKind: provider.sourcePolicy.sourceKind,
+          },
+          { status: 403 }
+        )
+      }
+
       providers = [provider]
+    }
+
+    if (providers.length === 0) {
+      return NextResponse.json(
+        {
+          error: 'No production enrichment providers are configured',
+          hint: 'Configure a licensed/public provider or explicitly enable synthetic providers outside production.',
+        },
+        { status: 503 }
+      )
     }
 
     const results = []
