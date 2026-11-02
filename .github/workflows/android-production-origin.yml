@@ -1,0 +1,82 @@
+name: Android Production-Origin Qualification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-production-origin.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-production-origin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    name: Build AtlasVerify Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify production origin
+        run: |
+          curl --fail --silent --show-error --location \
+            --max-time 30 \
+            https://atlasverify-web-production.up.railway.app/ \
+            >/dev/null
+
+      - name: Create isolated Capacitor shell
+        run: |
+          npm install --no-save @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
+          mkdir -p android-shell-web
+          cat > android-shell-web/index.html <<'HTML'
+          <!doctype html>
+          <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+          <body><p>AtlasVerify requires an internet connection.</p></body></html>
+          HTML
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId": "com.bobbysworld.atlasverify",
+            "appName": "AtlasVerify",
+            "webDir": "android-shell-web",
+            "server": {
+              "url": "https://atlasverify-web-production.up.railway.app",
+              "cleartext": false
+            }
+          }
+          JSON
+          npx cap add android
+          npx cap sync android
+
+      - name: Assemble debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/APK-SHA256.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: atlasverify-android-apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/APK-SHA256.txt
+          if-no-files-found: error
+          retention-days: 30
