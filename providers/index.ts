@@ -1,5 +1,6 @@
 // Import all providers to register them
 import './mock-phone-provider'
+import './twilio-phone-provider'
 import './mock-search-provider'
 
 // Re-export provider utilities
