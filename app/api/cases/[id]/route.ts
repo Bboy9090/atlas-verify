@@ -26,6 +26,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         subjects: {
           include: {
             enrichmentResults: {
+              include: {
+                evidenceFacts: {
+                  orderBy: { retrievedAt: 'desc' }
+                }
+              },
               orderBy: { timestamp: 'desc' }
             }
           },
