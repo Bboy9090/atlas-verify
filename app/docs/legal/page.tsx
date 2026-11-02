@@ -49,12 +49,11 @@ export default function LegalDocsPage() {
             <h3 className="text-white mt-6">2. Permitted Uses</h3>
             <div className="space-y-2">
               {[
-                'Background verification for employment purposes (with proper consent)',
-                'Insurance claim investigations',
-                'Legal discovery and litigation support',
-                'Fraud prevention and detection',
-                'Skip tracing for lawful debt collection',
-                'Due diligence for business transactions'
+                'Public-record and public-web research for lawful purposes',
+                'Reverse phone, email, address, username, business, and property research where lawful',
+                'Identity verification and fraud prevention outside regulated eligibility decisions',
+                'Personal due diligence, reconnecting, family-history, and authorized case research',
+                'Legal or compliance research by authorized professionals'
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-2 text-slate-300">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
@@ -70,7 +69,8 @@ export default function LegalDocsPage() {
                 'Discrimination based on protected characteristics',
                 'Any illegal surveillance or monitoring activities',
                 'Circumventing data protection regulations',
-                'Reselling or redistributing obtained data',
+                'Reselling or redistributing obtained data unless expressly licensed',
+                'Employment, housing, credit, insurance, benefits, or other eligibility decisions requiring a regulated consumer report',
                 'Any use violating applicable local, state, or federal laws'
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-2 text-slate-300">
@@ -82,9 +82,10 @@ export default function LegalDocsPage() {
 
             <h3 className="text-white mt-6">4. User Responsibilities</h3>
             <p className="text-slate-300">
-              Users are responsible for ensuring their use of AtlasVerify complies with all applicable laws, 
-              including but not limited to the Fair Credit Reporting Act (FCRA), Gramm-Leach-Bliley Act (GLBA), 
-              and state privacy laws. Users must maintain appropriate records of consent where required.
+              AtlasVerify's standard product is not a consumer reporting agency and must not be used for
+              employment, tenant, credit, insurance, government-benefit, or other regulated eligibility
+              decisions. Users are responsible for lawful purpose, provider terms, consent where required,
+              and applicable privacy laws.
             </p>
 
             <h3 className="text-white mt-6">5. Enforcement</h3>
@@ -108,9 +109,9 @@ export default function LegalDocsPage() {
 
             <h3 className="text-white mt-6">Subject Rights</h3>
             <p className="text-slate-300">
-              AtlasVerify respects the privacy rights of individuals. If you believe your information 
-              has been collected or used through our platform and wish to opt out, you may submit a request 
-              following the process below.
+              AtlasVerify respects the privacy rights of individuals. If you believe your information
+              appears in AtlasVerify-controlled search results or indexes and wish to request suppression,
+              you may submit a request using the process below.
             </p>
 
             <h3 className="text-white mt-6">How to Submit an Opt-Out Request</h3>
@@ -122,16 +123,14 @@ export default function LegalDocsPage() {
                 <li>
                   <strong>Required Information:</strong>
                   <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                    <li>Full legal name</li>
-                    <li>Current and previous addresses (last 5 years)</li>
-                    <li>Date of birth</li>
-                    <li>Phone number(s)</li>
-                    <li>Email address(es)</li>
-                    <li>Copy of government-issued ID (for verification)</li>
+                    <li>Name or identifier shown in the relevant AtlasVerify record</li>
+                    <li>A current contact method so we can respond to the request</li>
+                    <li>Enough information to identify the specific record or result to suppress</li>
+                    <li>Additional verification only when necessary, using the least intrusive reasonable method</li>
                   </ul>
                 </li>
                 <li>
-                  <strong>Verification:</strong> We will verify your identity within 10 business days
+                  <strong>Verification:</strong> We will use data-minimizing verification and will not require government ID by default
                 </li>
                 <li>
                   <strong>Processing:</strong> Upon verification, we will process your opt-out within 30 days
