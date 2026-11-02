@@ -43,7 +43,7 @@ export default function HomePage() {
               </Button>
             </Link>
             <Link href="/register">
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }} className="hover:opacity-90">
                 Get Started
               </Button>
             </Link>
@@ -63,7 +63,7 @@ export default function HomePage() {
         </p>
         <div className="flex items-center justify-center gap-4">
           <Link href="/register">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+            <Button size="lg" style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }} className="hover:opacity-90">
               Start Free Trial <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
