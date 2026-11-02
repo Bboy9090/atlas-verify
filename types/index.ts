@@ -75,5 +75,6 @@ export type AuditAction =
   | 'UPDATE_SUBJECT'
   | 'DELETE_SUBJECT'
   | 'RUN_ENRICHMENT'
+  | 'RUN_SEARCH'
   | 'LOGIN'
   | 'LOGOUT';
