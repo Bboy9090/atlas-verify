@@ -38,4 +38,6 @@ jobs:
           test -s public/offline.html
           test -s app/privacy/page.tsx
           test -s app/support/page.tsx
+          test -s app/account/page.tsx
+          test -s app/api/account/route.ts
           ! grep -Eq "(/api/|cases|subjects|enrichment|audit)" public/sw.js || { echo "Service worker must not cache investigation/API data"; exit 1; }

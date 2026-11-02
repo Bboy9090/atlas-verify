@@ -64,12 +64,21 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Assemble debug APK
+      - name: Verify Play technical contract
+        run: |
+          test -f android/variables.gradle
+          grep -Eq 'compileSdkVersion\s*=\s*36' android/variables.gradle
+          grep -Eq 'targetSdkVersion\s*=\s*36' android/variables.gradle
+          grep -q 'applicationId "com.bobbysworld.atlasverify"' android/app/build.gradle
+          ! grep -R 'usesCleartextTraffic="true"' android/app/src/main || { echo "Cleartext networking is forbidden"; exit 1; }
+
+      - name: Android lint and assemble debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew lintDebug assembleDebug --stacktrace
           test -s app/build/outputs/apk/debug/app-debug.apk
+          test -s app/build/reports/lint-results-debug.html
           sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/APK-SHA256.txt
 
       - uses: actions/upload-artifact@v7

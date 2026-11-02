@@ -3,7 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Shield, FileText, History, LogOut, Menu, X, FileCheck, LayoutDashboard } from 'lucide-react'
+import { Shield, FileText, History, LogOut, Menu, X, FileCheck, LayoutDashboard, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 
@@ -21,6 +21,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/cases', label: 'Cases', icon: FileText },
     { href: '/audit-logs', label: 'Audit Logs', icon: History },
     { href: '/docs/legal', label: 'Legal', icon: FileCheck },
+    { href: '/account', label: 'Account', icon: UserRound },
   ]
 
   return (
