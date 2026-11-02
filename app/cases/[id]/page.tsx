@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, UserCircle, Search, Phone, Mail, MapPin, Trash2, Edit, Play, Loader2, Download } from 'lucide-react'
+import { ArrowLeft, Plus, UserCircle, Search, Phone, Mail, MapPin, Trash2, Edit, Play, Loader2, Download, ExternalLink, ShieldCheck, TriangleAlert, Clock3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +16,19 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { DashboardLayout } from '@/components/dashboard-layout'
+
+interface EvidenceFact {
+  id: string
+  field: string
+  value: unknown
+  sourceName: string
+  sourceUrl: string | null
+  retrievedAt: string
+  observedAt: string | null
+  confidenceScore: number
+  corroborationCount: number
+  conflictCount: number
+}
 
 interface EnrichmentResult {
   id: string
@@ -29,6 +42,7 @@ interface EnrichmentResult {
   }
   confidenceScore: number
   timestamp: string
+  evidenceFacts: EvidenceFact[]
 }
 
 interface Subject {
@@ -544,11 +558,93 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
                       {result.payload.success ? (
-                        <pre className="bg-slate-900 rounded-lg p-4 overflow-auto text-sm text-slate-300">
-                          {JSON.stringify(result.payload.data, null, 2)}
-                        </pre>
+                        <>
+                          {result.evidenceFacts?.length ? (
+                            <div className="space-y-3">
+                              {result.evidenceFacts.map((fact) => {
+                                const ageDays = Math.max(
+                                  0,
+                                  Math.floor((Date.now() - new Date(fact.retrievedAt).getTime()) / 86400000)
+                                )
+                                const stale = ageDays > 365
+                                const corroborated = fact.corroborationCount > 0
+                                const conflicted = fact.conflictCount > 0
+
+                                return (
+                                  <div
+                                    key={fact.id}
+                                    className="rounded-lg border border-slate-700 bg-slate-900/70 p-4"
+                                  >
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                      <div>
+                                        <div className="text-sm font-medium text-slate-200">{fact.field}</div>
+                                        <div className="mt-1 break-words text-sm text-white">
+                                          {typeof fact.value === 'string'
+                                            ? fact.value
+                                            : JSON.stringify(fact.value)}
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        {corroborated && (
+                                          <Badge variant="outline" className="border-green-500/40 text-green-300">
+                                            <ShieldCheck className="mr-1 h-3 w-3" />
+                                            Corroborated
+                                          </Badge>
+                                        )}
+                                        {conflicted && (
+                                          <Badge variant="outline" className="border-red-500/40 text-red-300">
+                                            <TriangleAlert className="mr-1 h-3 w-3" />
+                                            Conflict
+                                          </Badge>
+                                        )}
+                                        {stale && (
+                                          <Badge variant="outline" className="border-yellow-500/40 text-yellow-300">
+                                            <Clock3 className="mr-1 h-3 w-3" />
+                                            Stale
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
+                                      <span>Source: {fact.sourceName}</span>
+                                      <span>Confidence: {Math.round(fact.confidenceScore * 100)}%</span>
+                                      <span>
+                                        Retrieved {new Date(fact.retrievedAt).toLocaleString()}
+                                      </span>
+                                      {fact.sourceUrl && (
+                                        <a
+                                          href={fact.sourceUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                                        >
+                                          Open source
+                                          <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-4 text-sm text-slate-400">
+                              This provider returned data but no source-level evidence facts.
+                            </div>
+                          )}
+
+                          <details className="rounded-lg border border-slate-800 bg-slate-950/50">
+                            <summary className="cursor-pointer px-4 py-3 text-sm text-slate-400">
+                              Raw provider payload
+                            </summary>
+                            <pre className="overflow-auto border-t border-slate-800 p-4 text-xs text-slate-400">
+                              {JSON.stringify(result.payload.data, null, 2)}
+                            </pre>
+                          </details>
+                        </>
                       ) : (
                         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400">
                           Error: {result.payload.error || 'Unknown error'}
