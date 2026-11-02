@@ -32,21 +32,15 @@ export default function HomePage() {
             <span className="text-2xl font-bold text-white">AtlasVerify</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/docs/legal">
-              <Button variant="ghost" className="text-slate-300 hover:text-white">
-                Legal
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button variant="ghost" className="text-slate-300 hover:text-white">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }} className="hover:opacity-90">
-                Get Started
-              </Button>
-            </Link>
+            <Button asChild variant="ghost" className="min-h-11 text-slate-300 hover:text-white">
+              <Link href="/docs/legal">Legal</Link>
+            </Button>
+            <Button asChild variant="ghost" className="min-h-11 text-slate-300 hover:text-white">
+              <Link href="/login">Sign In</Link>
+            </Button>
+            <Button asChild style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }} className="min-h-11 hover:opacity-90">
+              <Link href="/register">Get Started</Link>
+            </Button>
           </div>
         </nav>
       </header>
@@ -62,16 +56,14 @@ export default function HomePage() {
           and enrichment pipelines. Built for compliance-first operations.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <Link href="/register">
-            <Button size="lg" style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }} className="hover:opacity-90">
+          <Button asChild size="lg" style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }} className="min-h-11 hover:opacity-90">
+            <Link href="/register">
               Start Free Trial <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
-          <Link href="/docs/legal">
-            <Button size="lg" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800">
-              View Legal Docs
-            </Button>
-          </Link>
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="min-h-11 border-slate-600 text-slate-300 hover:bg-slate-800">
+            <Link href="/docs/legal">View Legal Docs</Link>
+          </Button>
         </div>
       </section>
 
@@ -147,16 +139,22 @@ export default function HomePage() {
             <Shield className="h-6 w-6 text-blue-500" />
             <span className="text-lg font-semibold text-white">AtlasVerify</span>
           </div>
-          <div className="flex items-center gap-6 text-slate-400">
-            <Link href="/docs/legal" className="hover:text-white transition-colors">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-slate-400">
+            <Link href="/privacy" className="inline-flex min-h-11 items-center rounded px-2 hover:text-white transition-colors">
+              Privacy
+            </Link>
+            <Link href="/support" className="inline-flex min-h-11 items-center rounded px-2 hover:text-white transition-colors">
+              Support
+            </Link>
+            <Link href="/docs/legal" className="inline-flex min-h-11 items-center rounded px-2 hover:text-white transition-colors">
               Acceptable Use Policy
             </Link>
-            <Link href="/docs/legal#opt-out" className="hover:text-white transition-colors">
+            <Link href="/docs/legal#opt-out" className="inline-flex min-h-11 items-center rounded px-2 hover:text-white transition-colors">
               Opt-Out Process
             </Link>
           </div>
           <p className="text-slate-500 text-sm">
-            © 2025 AtlasVerify. All rights reserved.
+            © 2026 AtlasVerify. All rights reserved.
           </p>
         </div>
       </footer>
