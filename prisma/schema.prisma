@@ -129,8 +129,7 @@ model SuppressionRequest {
   identifierType   String
   identifierHash   String
   identifierHint   String?
-  contactEmailHash String?
-  contactHint      String?
+  contactEmail     String
   status           String    @default("pending") // 'pending' | 'approved' | 'rejected'
   verificationNote String?
   resolutionNote   String?
