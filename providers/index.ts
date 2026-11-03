@@ -8,6 +8,7 @@ import './nhtsa-vpic-provider'
 import './nppes-license-provider'
 import './sec-business-provider'
 import './nyc-acris-property-provider'
+import './ofac-sanctions-provider'
 
 // Re-export provider utilities
 export { getProvider, getAllProviders, getProvidersByType, registerProvider } from './enrichment-provider'
