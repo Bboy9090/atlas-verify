@@ -6,6 +6,7 @@ CREATE TABLE "SubjectMonitor" (
     "baselineHash" TEXT NOT NULL,
     "baselineFactCount" INTEGER NOT NULL DEFAULT 0,
     "baselineSourceCount" INTEGER NOT NULL DEFAULT 0,
+    "baselineManifest" JSONB NOT NULL,
     "lastCheckedAt" TIMESTAMP(3),
     "lastChangedAt" TIMESTAMP(3),
     "lastChangeSummary" JSONB,
