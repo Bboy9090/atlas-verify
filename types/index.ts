@@ -27,7 +27,12 @@ export interface EvidenceFactInput {
   field: string;
   value: unknown;
   sourceName: string;
+  sourceType?: ProviderSourceKind;
   sourceUrl?: string;
+  sourceLocator?: string;
+  normalizedValue?: string;
+  rawRecordHash?: string;
+  legalBasis?: string;
   retrievedAt: string;
   observedAt?: string;
   confidenceScore: number;
