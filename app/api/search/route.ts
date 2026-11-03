@@ -6,7 +6,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { createAuditLog } from '@/lib/audit'
 import { detectSearchKind, scoreSubjectMatch, type SearchKind } from '@/lib/search'
 
-const VALID_KINDS = new Set<SearchKind>(['auto', 'name', 'phone', 'email', 'address'])
+const VALID_KINDS = new Set<SearchKind>(['auto', 'name', 'phone', 'email', 'address', 'username'])
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
           fullName: subject.fullName,
           phoneE164: subject.phoneE164,
           email: subject.email,
+          username: subject.username,
           address: subject.address,
           city: subject.city,
           state: subject.state,
