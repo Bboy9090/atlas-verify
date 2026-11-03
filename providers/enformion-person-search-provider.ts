@@ -296,9 +296,9 @@ const enformionPersonSearchProvider: EnrichmentProvider = {
       'case_research',
       'public_record_research',
     ],
-    mayPersist: true,
+    mayPersist: false,
     notes:
-      'Non-FCRA people-search data. Provider candidates are leads and must be independently matched/corroborated before conclusions are drawn.',
+      'Non-FCRA people-search data. Provider candidates are leads and must be independently matched/corroborated before conclusions are drawn. Persistence stays disabled until account terms/retention rights are reviewed.',
   },
 
   async lookupSubject(subject: ProviderSubjectInput): Promise<EnrichmentPayload> {
