@@ -15,6 +15,6 @@ export function getAllProviders(): EnrichmentProvider[] {
   return Array.from(providers.values())
 }
 
-export function getProvidersByType(type: 'phone_lookup' | 'web_search'): EnrichmentProvider[] {
+export function getProvidersByType(type: EnrichmentProvider['type']): EnrichmentProvider[] {
   return getAllProviders().filter(p => p.type === type)
 }

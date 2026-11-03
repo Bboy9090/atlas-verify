@@ -108,13 +108,62 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         input = subject.phoneE164
       } else if (provider.type === 'web_search') {
         input = subject.fullName
-      } else {
-        continue // Skip if no suitable input
+      } else if (provider.type !== 'person_search') {
+        continue
       }
 
       try {
-        const enrichmentPayload = await provider.lookup(input)
+        const enrichmentPayload = provider.type === 'person_search'
+          ? provider.lookupSubject
+            ? await provider.lookupSubject({
+                fullName: subject.fullName,
+                phoneE164: subject.phoneE164,
+                email: subject.email,
+                username: subject.username,
+                address: subject.address,
+                city: subject.city,
+                state: subject.state,
+              })
+            : {
+                success: false,
+                data: {},
+                confidenceScore: 0,
+                error: 'Person-search provider does not implement structured lookup',
+              }
+          : provider.lookup
+            ? await provider.lookup(input)
+            : {
+                success: false,
+                data: {},
+                confidenceScore: 0,
+                error: 'Provider does not implement lookup',
+              }
         
+        if (!provider.sourcePolicy.mayPersist) {
+          results.push({
+            provider: provider.name,
+            providerType: provider.type,
+            payload: enrichmentPayload,
+            confidenceScore: enrichmentPayload.confidenceScore,
+            evidenceFacts: enrichmentPayload.evidenceFacts ?? [],
+            ephemeral: true,
+            persisted: false,
+          })
+
+          await createAuditLog(userId, 'RUN_ENRICHMENT', {
+            subjectId,
+            caseId,
+            provider: provider.name,
+            providerType: provider.type,
+            success: enrichmentPayload.success,
+            confidenceScore: enrichmentPayload.confidenceScore,
+            persisted: false,
+            sourceKind: provider.sourcePolicy.sourceKind,
+          }, subjectId)
+
+          continue
+        }
+
         const result = await prisma.enrichmentResult.create({
           data: {
             subjectId,
@@ -183,7 +232,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           provider: provider.name,
           providerType: provider.type,
           success: enrichmentPayload.success,
-          confidenceScore: enrichmentPayload.confidenceScore
+          confidenceScore: enrichmentPayload.confidenceScore,
+          persisted: true,
+          sourceKind: provider.sourcePolicy.sourceKind,
         }, subjectId)
       } catch (err) {
         console.error(`Provider ${provider.name} failed:`, err)

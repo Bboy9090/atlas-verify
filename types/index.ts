@@ -16,11 +16,22 @@ export interface ProviderSourcePolicy {
   notes?: string;
 }
 
+export interface ProviderSubjectInput {
+  fullName: string;
+  phoneE164?: string | null;
+  email?: string | null;
+  username?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+}
+
 export interface EnrichmentProvider {
   name: string;
-  type: 'phone_lookup' | 'web_search';
+  type: 'phone_lookup' | 'web_search' | 'person_search';
   sourcePolicy: ProviderSourcePolicy;
-  lookup(input: string): Promise<EnrichmentPayload>;
+  lookup?: (input: string) => Promise<EnrichmentPayload>;
+  lookupSubject?: (subject: ProviderSubjectInput) => Promise<EnrichmentPayload>;
 }
 
 export interface EvidenceFactInput {
