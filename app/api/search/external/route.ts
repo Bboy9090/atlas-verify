@@ -5,6 +5,8 @@ import { createAuditLog } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { detectSearchKind, type SearchKind } from '@/lib/search'
 import { getProvider } from '@/providers'
+import prisma from '@/lib/prisma'
+import { hashSuppressionIdentifier, type SuppressionIdentifierType } from '@/lib/suppression'
 import type { ProviderSubjectInput } from '@/types'
 
 const VALID_KINDS = new Set<SearchKind>(['auto', 'name', 'phone', 'email', 'address', 'username'])
@@ -185,6 +187,53 @@ export async function POST(request: NextRequest) {
   }
 
   const detectedKind = requestedKind === 'auto' ? detectSearchKind(query) : requestedKind
+  const suppressionHash = hashSuppressionIdentifier(
+    detectedKind as SuppressionIdentifierType,
+    query
+  )
+  const suppression = await prisma.suppressionRequest.findFirst({
+    where: {
+      identifierType: detectedKind,
+      identifierHash: suppressionHash,
+      status: 'approved',
+    },
+    select: { id: true },
+  })
+
+  if (suppression) {
+    await createAuditLog(userId, 'RUN_SEARCH', {
+      requestedType: requestedKind,
+      queryType: detectedKind,
+      queryLength: query.length,
+      externalProviders: true,
+      provider: null,
+      persisted: false,
+      candidateCount: 0,
+      suppressed: true,
+    })
+
+    return NextResponse.json({
+      available: false,
+      queryType: detectedKind,
+      candidates: [],
+      coverage: {
+        provider: null,
+        description: 'This identifier is suppressed from AtlasVerify-controlled live enrichment queries.',
+      },
+      policy: {
+        ephemeral: true,
+        persisted: false,
+        identityProof: false,
+        nonFCRA: true,
+        suppressed: true,
+      },
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, private',
+      },
+    })
+  }
+
   const input = providerInput(query, detectedKind)
 
   if (!input) {

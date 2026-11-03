@@ -17,6 +17,7 @@ model User {
   cases         Case[]
   auditLogs     AuditLog[]
   evidenceDisputes EvidenceDispute[]
+  reviewedSuppressionRequests SuppressionRequest[] @relation("SuppressionReviewer")
 }
 
 model Case {
@@ -117,6 +118,28 @@ model EvidenceDispute {
 
   @@index([evidenceFactId])
   @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+
+model SuppressionRequest {
+  id               String    @id @default(uuid())
+  requestTokenHash String    @unique
+  identifierType   String
+  identifierHash   String
+  identifierHint   String?
+  contactEmail     String
+  status           String    @default("pending") // 'pending' | 'approved' | 'rejected'
+  verificationNote String?
+  resolutionNote   String?
+  reviewedById     String?
+  reviewedBy       User?     @relation("SuppressionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([identifierType, identifierHash])
   @@index([status])
   @@index([createdAt])
 }

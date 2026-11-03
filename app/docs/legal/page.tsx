@@ -115,27 +115,21 @@ export default function LegalDocsPage() {
             </p>
 
             <h3 className="text-white mt-6">How to Submit an Opt-Out Request</h3>
-            <div className="bg-slate-900/50 rounded-lg p-6 mt-4">
-              <ol className="list-decimal list-inside space-y-3 text-slate-300">
-                <li>
-                  <strong>Email Request:</strong> Send an email to <span className="text-blue-400">privacy@atlasverify.example.com</span> with the subject line "Opt-Out Request"
-                </li>
-                <li>
-                  <strong>Required Information:</strong>
-                  <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
-                    <li>Name or identifier shown in the relevant AtlasVerify record</li>
-                    <li>A current contact method so we can respond to the request</li>
-                    <li>Enough information to identify the specific record or result to suppress</li>
-                    <li>Additional verification only when necessary, using the least intrusive reasonable method</li>
-                  </ul>
-                </li>
-                <li>
-                  <strong>Verification:</strong> We will use data-minimizing verification and will not require government ID by default
-                </li>
-                <li>
-                  <strong>Processing:</strong> Upon verification, we will process your opt-out within 30 days
-                </li>
-              </ol>
+            <div className="bg-slate-900/50 rounded-lg p-6 mt-4 space-y-4 text-slate-300">
+              <p>
+                Use the AtlasVerify suppression-request form. Submit the exact identifier shown in AtlasVerify
+                and a contact email for verification and resolution. AtlasVerify stores a one-way hash of the
+                submitted identifier for suppression enforcement rather than retaining that identifier in plaintext.
+              </p>
+              <Link href="/privacy/opt-out">
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  Submit or Check a Suppression Request
+                </Button>
+              </Link>
+              <p className="text-sm text-slate-400">
+                Additional verification may be requested only when necessary and should use the least intrusive
+                reasonable method. Government ID is not required by default.
+              </p>
             </div>
 
             <h3 className="text-white mt-6">What Opt-Out Covers</h3>
@@ -151,11 +145,12 @@ export default function LegalDocsPage() {
               or other legal processes. We will notify you if your request cannot be honored due to legal requirements.
             </p>
 
-            <h3 className="text-white mt-6">Contact Information</h3>
+            <h3 className="text-white mt-6">Request Tracking</h3>
             <div className="bg-slate-900/50 rounded-lg p-6 mt-4 text-slate-300">
-              <p className="font-semibold text-white">AtlasVerify Privacy Office</p>
-              <p>Email: privacy@atlasverify.example.com</p>
-              <p>Response Time: Within 10 business days</p>
+              <p>
+                New requests receive a private request token that can be used on the suppression page to check
+                pending, approved, or rejected status without exposing the submitted identifier.
+              </p>
             </div>
           </CardContent>
         </Card>
