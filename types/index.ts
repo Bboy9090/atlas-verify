@@ -92,5 +92,6 @@ export type AuditAction =
   | 'DELETE_SUBJECT'
   | 'RUN_ENRICHMENT'
   | 'RUN_SEARCH'
+  | 'EXPORT_CASE_REPORT'
   | 'LOGIN'
   | 'LOGOUT';
