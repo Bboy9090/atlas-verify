@@ -4,7 +4,7 @@ export default function PrivacyPage() {
       <h1 className="text-3xl font-semibold text-white">AtlasVerify Privacy</h1>
       <p className="text-sm text-slate-400">Last updated: October 31, 2026</p>
       <p>
-        AtlasVerify is designed for lawful investigation, compliance, and verification workflows.
+        AtlasVerify is designed for lawful consumer/public-record research, evidence management, and verification workflows.
         Depending on the features you use, the service can store account information, cases,
         subjects, enrichment results, notes, and audit records that you or authorized data
         providers supply.
@@ -25,12 +25,15 @@ export default function PrivacyPage() {
       <p>
         AtlasVerify maintains audit-oriented records for supported actions. Users remain
         responsible for lawful purpose, consent where required, access control, and compliance
-        with applicable privacy and consumer-reporting rules.
+        with applicable privacy rules. AtlasVerify's standard product is not a consumer reporting agency
+        and must not be used for regulated employment, housing, credit, insurance, or similar eligibility decisions.
       </p>
       <h2 className="text-xl font-semibold text-white">Questions and opt-out</h2>
       <p>
         Review the Acceptable Use and Opt-Out materials under <a className="text-blue-400 underline" href="/docs/legal">Legal</a>.
-        Deployment-specific privacy requests should be directed to the operator of the AtlasVerify instance.
+        Suppression requests should use the minimum information necessary to identify the relevant record;
+        government ID should not be required by default. Deployment-specific privacy requests should be directed
+        to the operator of the AtlasVerify instance.
       </p>
     </main>
   )
