@@ -157,6 +157,7 @@ model SubjectMonitor {
   baselineHash        String
   baselineFactCount   Int            @default(0)
   baselineSourceCount Int            @default(0)
+  baselineManifest    Json           @db.JsonB
   lastCheckedAt       DateTime?
   lastChangedAt       DateTime?
   lastChangeSummary   Json?          @db.JsonB
