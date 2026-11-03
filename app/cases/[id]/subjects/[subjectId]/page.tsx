@@ -18,6 +18,7 @@ import {
   AtSign,
   GitBranch,
   History,
+  Flag,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
@@ -268,6 +269,12 @@ export default function SubjectProfilePage({
               Evidence-backed profile in {data.case.title}
             </p>
           </div>
+          <Link href={`/cases/${data.case.id}/subjects/${subject.id}/evidence-review`}>
+            <Button variant="outline" className="border-yellow-500/30 text-yellow-300">
+              <Flag className="mr-2 h-4 w-4" />
+              Evidence Review
+            </Button>
+          </Link>
           <Badge variant="outline" className="border-slate-600 text-slate-300">
             {data.evidenceFactCount} evidence facts
           </Badge>
