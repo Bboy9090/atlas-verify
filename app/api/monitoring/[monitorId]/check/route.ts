@@ -120,7 +120,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
         factCount: snapshot.factCount,
         sourceCount: snapshot.sourceCount,
         changed,
-        changeSummary: changeSummary as Prisma.InputJsonValue,
+        changeSummary: changeSummary as unknown as Prisma.InputJsonValue,
         checkedAt: now,
       },
     }),
@@ -130,14 +130,14 @@ export async function POST(_request: Request, { params }: RouteParams) {
         baselineHash: snapshot.hash,
         baselineFactCount: snapshot.factCount,
         baselineSourceCount: snapshot.sourceCount,
-        baselineManifest: snapshot.manifest as Prisma.InputJsonValue,
+        baselineManifest: snapshot.manifest as unknown as Prisma.InputJsonValue,
         lastCheckedAt: now,
         lastChangedAt: changed ? now : monitor.lastChangedAt,
         lastChangeSummary: changed
-          ? changeSummary as Prisma.InputJsonValue
+          ? changeSummary as unknown as Prisma.InputJsonValue
           : monitor.lastChangeSummary === null
             ? Prisma.JsonNull
-            : monitor.lastChangeSummary as Prisma.InputJsonValue,
+            : monitor.lastChangeSummary as unknown as Prisma.InputJsonValue,
       },
     }),
   ])
