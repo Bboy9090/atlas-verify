@@ -484,7 +484,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                         </Link>
                         <Button
                           size="sm"
-                          onClick={() => handleRunEnrichment(subject)
+                          onClick={() => handleRunEnrichment(subject)}
                           disabled={enrichingSubjects.has(subject.id)}
                           className="bg-green-600 hover:bg-green-700"
                         >
