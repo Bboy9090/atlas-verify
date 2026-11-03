@@ -16,6 +16,8 @@ import {
   TriangleAlert,
   Clock3,
   AtSign,
+  GitBranch,
+  History,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
@@ -36,6 +38,39 @@ interface ProfileItem {
   corroborated: boolean
   conflicted: boolean
   stale: boolean
+}
+
+interface EvidenceTimelineEvent {
+  id: string
+  timestamp: string
+  timestampType: 'observed' | 'retrieved'
+  field: string
+  value: unknown
+  sourceName: string
+  sourceType: string | null
+  sourceUrl: string | null
+  confidenceScore: number
+  corroborationCount: number
+  conflictCount: number
+}
+
+interface RelationshipGraphNode {
+  id: string
+  label: string
+  type: 'subject' | 'relative' | 'associate' | 'business'
+  sourceCount: number
+  averageConfidence: number
+  corroborated: boolean
+  conflicted: boolean
+  stale: boolean
+}
+
+interface RelationshipGraphEdge {
+  id: string
+  from: string
+  to: string
+  type: 'relative' | 'associate' | 'business'
+  label: string
 }
 
 interface ProfileResponse {
@@ -65,6 +100,11 @@ interface ProfileResponse {
     associates: ProfileItem[]
     businesses: ProfileItem[]
     other: ProfileItem[]
+  }
+  timeline: EvidenceTimelineEvent[]
+  relationshipGraph: {
+    nodes: RelationshipGraphNode[]
+    edges: RelationshipGraphEdge[]
   }
   evidenceFactCount: number
 }
@@ -207,6 +247,8 @@ export default function SubjectProfilePage({
   if (!data) return null
 
   const subject = data.subject
+  const graphNodes = new Map(data.relationshipGraph.nodes.map(node => [node.id, node]))
+  const subjectNode = data.relationshipGraph.nodes.find(node => node.type === 'subject')
 
   return (
     <DashboardLayout>
@@ -265,6 +307,130 @@ export default function SubjectProfilePage({
             )}
           </CardContent>
         </Card>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card className="border-slate-700 bg-slate-800/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <GitBranch className="h-5 w-5 text-blue-400" />
+                Relationship graph
+              </CardTitle>
+              <CardDescription className="text-slate-400">
+                Connections shown here come only from evidence that explicitly reports a relative, associate, or business relationship.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.relationshipGraph.edges.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-700 p-5 text-sm text-slate-500">
+                  No source-backed relationship edges have been collected yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {data.relationshipGraph.edges.map(edge => {
+                    const node = graphNodes.get(edge.to)
+                    if (!node) return null
+                    return (
+                      <div
+                        key={edge.id}
+                        className="grid items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/70 p-3 md:grid-cols-[1fr_auto_1fr]"
+                      >
+                        <div className="rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-sm font-medium text-blue-200">
+                          {subjectNode?.label || subject.fullName}
+                        </div>
+                        <div className="text-center text-xs text-slate-500">
+                          → {edge.label} →
+                        </div>
+                        <div className="rounded-md border border-slate-600 px-3 py-2">
+                          <div className="break-words text-sm font-medium text-white">{node.label}</div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <Badge variant="outline" className="border-slate-600 text-slate-300">
+                              {node.type}
+                            </Badge>
+                            {node.corroborated && (
+                              <Badge variant="outline" className="border-green-500/30 text-green-300">
+                                corroborated
+                              </Badge>
+                            )}
+                            {node.conflicted && (
+                              <Badge variant="outline" className="border-red-500/30 text-red-300">
+                                conflict
+                              </Badge>
+                            )}
+                            {node.stale && (
+                              <Badge variant="outline" className="border-yellow-500/30 text-yellow-300">
+                                stale
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="mt-2 text-xs text-slate-500">
+                            {node.sourceCount} source{node.sourceCount === 1 ? '' : 's'} • {Math.round(node.averageConfidence * 100)}% confidence
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-700 bg-slate-800/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <History className="h-5 w-5 text-blue-400" />
+                Evidence timeline
+              </CardTitle>
+              <CardDescription className="text-slate-400">
+                Chronological evidence using source observation time when supplied, otherwise retrieval time.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.timeline.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-700 p-5 text-sm text-slate-500">
+                  No evidence events have been collected yet.
+                </div>
+              ) : (
+                <div className="max-h-[640px] space-y-3 overflow-y-auto pr-1">
+                  {data.timeline.map(event => (
+                    <div key={event.id} className="relative border-l border-slate-700 pl-4">
+                      <div className="absolute -left-1 top-2 h-2 w-2 rounded-full bg-blue-400" />
+                      <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-medium text-white">{displayValue(event.value)}</div>
+                            <div className="mt-1 text-xs text-slate-500">{event.field}</div>
+                          </div>
+                          <div className="text-right text-xs text-slate-500">
+                            <div>{new Date(event.timestamp).toLocaleString()}</div>
+                            <div>{event.timestampType}</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                          <Badge variant="outline" className="border-slate-600 text-slate-300">
+                            {event.sourceName}
+                          </Badge>
+                          <Badge variant="outline" className="border-blue-500/30 text-blue-300">
+                            {Math.round(event.confidenceScore * 100)}% confidence
+                          </Badge>
+                          {event.corroborationCount > 0 && (
+                            <Badge variant="outline" className="border-green-500/30 text-green-300">
+                              corroboration {event.corroborationCount}
+                            </Badge>
+                          )}
+                          {event.conflictCount > 0 && (
+                            <Badge variant="outline" className="border-red-500/30 text-red-300">
+                              conflicts {event.conflictCount}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <ProfileSection title="Aliases" description="Alternate names found in source-backed evidence." items={data.profile.aliases} icon={UserRound} />
