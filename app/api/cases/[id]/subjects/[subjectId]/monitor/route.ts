@@ -121,7 +121,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
       baselineHash: snapshot.hash,
       baselineFactCount: snapshot.factCount,
       baselineSourceCount: snapshot.sourceCount,
-      baselineManifest: snapshot.manifest as Prisma.InputJsonValue,
+      baselineManifest: snapshot.manifest as unknown as Prisma.InputJsonValue,
       lastCheckedAt: now,
       lastChangeSummary: Prisma.JsonNull,
     },
@@ -132,7 +132,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
       baselineHash: snapshot.hash,
       baselineFactCount: snapshot.factCount,
       baselineSourceCount: snapshot.sourceCount,
-      baselineManifest: snapshot.manifest as Prisma.InputJsonValue,
+      baselineManifest: snapshot.manifest as unknown as Prisma.InputJsonValue,
       lastCheckedAt: now,
     },
   })
@@ -148,7 +148,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
         kind: existing ? 'baseline_reset' : 'baseline_created',
         addedCount: 0,
         removedCount: 0,
-      } as Prisma.InputJsonValue,
+      } as unknown as Prisma.InputJsonValue,
       checkedAt: now,
     },
   })
