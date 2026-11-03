@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Phone, Mail, MapPin, UserRound, ShieldCheck, Database, ArrowRight } from 'lucide-react'
+import { Search, Phone, Mail, MapPin, UserRound, ShieldCheck, Database, ArrowRight, AtSign } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
-type SearchKind = 'auto' | 'name' | 'phone' | 'email' | 'address'
+type SearchKind = 'auto' | 'name' | 'phone' | 'email' | 'address' | 'username'
 
 interface Candidate {
   subject: {
@@ -21,6 +21,7 @@ interface Candidate {
     fullName: string
     phoneE164: string | null
     email: string | null
+    username: string | null
     address: string | null
     city: string | null
     state: string | null
@@ -106,7 +107,7 @@ export default function SearchPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">Search</h1>
           <p className="mt-1 text-slate-400">
-            Search people already stored in your case workspace by name, phone, email, or address.
+            Search people already stored in your case workspace by name, phone, email, address, or username.
           </p>
         </div>
 
@@ -118,7 +119,7 @@ export default function SearchPage() {
                 <Input
                   value={query}
                   onChange={event => setQuery(event.target.value)}
-                  placeholder="Name, phone, email, or address"
+                  placeholder="Name, phone, email, address, or @username"
                   className="bg-slate-900 pl-10 text-white"
                 />
               </div>
@@ -132,6 +133,7 @@ export default function SearchPage() {
                   <SelectItem value="phone">Phone</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="address">Address</SelectItem>
+                  <SelectItem value="username">Username</SelectItem>
                 </SelectContent>
               </Select>
               <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
@@ -229,6 +231,12 @@ export default function SearchPage() {
                           <div className="flex items-center gap-2">
                             <Mail className="h-4 w-4 text-slate-500" />
                             {candidate.subject.email}
+                          </div>
+                        )}
+                        {candidate.subject.username && (
+                          <div className="flex items-center gap-2">
+                            <AtSign className="h-4 w-4 text-slate-500" />
+                            {candidate.subject.username}
                           </div>
                         )}
                         {(candidate.subject.address || candidate.subject.city || candidate.subject.state) && (

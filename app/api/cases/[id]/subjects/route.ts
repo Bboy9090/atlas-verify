@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json()
-    const { fullName, phoneE164, email, address, city, state, notes } = body
+    const { fullName, phoneE164, email, username, address, city, state, notes } = body
 
     if (!fullName) {
       return NextResponse.json(
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         fullName,
         phoneE164: phoneE164 || null,
         email: email || null,
+        username: username ? String(username).trim().replace(/^@/, '') : null,
         address: address || null,
         city: city || null,
         state: state || null,

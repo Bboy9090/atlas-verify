@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { Prisma } from '@prisma/client'
+import { createHash } from 'node:crypto'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
@@ -123,20 +124,48 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             confidenceScore: enrichmentPayload.confidenceScore,
             evidenceFacts: enrichmentPayload.evidenceFacts?.length
               ? {
-                  create: enrichmentPayload.evidenceFacts.map((fact) => ({
+                  create: enrichmentPayload.evidenceFacts.map((fact) => {
+                    const normalizedValue = fact.normalizedValue
+                      ?? (typeof fact.value === 'string'
+                        ? fact.value.trim().toLowerCase()
+                        : JSON.stringify(fact.value))
+                    const rawRecordHash = fact.rawRecordHash
+                      ?? createHash('sha256')
+                        .update(JSON.stringify({
+                          provider: provider.name,
+                          field: fact.field,
+                          value: fact.value,
+                          sourceUrl: fact.sourceUrl ?? null,
+                          retrievedAt: fact.retrievedAt,
+                        }))
+                        .digest('hex')
+
+                    return {
                     field: fact.field,
                     value: fact.value as Prisma.InputJsonValue,
                     sourceName: fact.sourceName,
+                    sourceType: fact.sourceType ?? provider.sourcePolicy.sourceKind,
                     sourceUrl: fact.sourceUrl,
+                    sourceLocator: fact.sourceLocator ?? fact.sourceUrl,
+                    normalizedValue,
+                    rawRecordHash,
+                    legalBasis: fact.legalBasis
+                      ?? provider.sourcePolicy.termsUrl
+                      ?? provider.sourcePolicy.licenseName,
                     retrievedAt: new Date(fact.retrievedAt),
                     observedAt: fact.observedAt ? new Date(fact.observedAt) : undefined,
                     confidenceScore: fact.confidenceScore,
                     corroborationCount: fact.corroborationCount ?? 0,
                     conflictCount: fact.conflictCount ?? 0,
-                    metadata: fact.metadata
-                      ? (fact.metadata as Prisma.InputJsonValue)
-                      : undefined,
-                  }))
+                    metadata: {
+                      ...(fact.metadata ?? {}),
+                      provider: provider.name,
+                      providerSourceKind: provider.sourcePolicy.sourceKind,
+                      providerTermsUrl: provider.sourcePolicy.termsUrl ?? null,
+                      hashScope: fact.rawRecordHash ? 'provider_record' : 'normalized_evidence_fact',
+                    } as Prisma.InputJsonValue,
+                  }
+                  })
                 }
               : undefined
           },

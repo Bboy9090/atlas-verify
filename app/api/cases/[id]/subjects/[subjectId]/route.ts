@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json()
-    const { fullName, phoneE164, email, address, city, state, notes } = body
+    const { fullName, phoneE164, email, username, address, city, state, notes } = body
 
     const updatedSubject = await prisma.subject.update({
       where: { id: subjectId },
@@ -98,6 +98,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         fullName: fullName || subject.fullName,
         phoneE164: phoneE164 !== undefined ? phoneE164 : subject.phoneE164,
         email: email !== undefined ? email : subject.email,
+        username: username !== undefined
+          ? (username ? String(username).trim().replace(/^@/, '') : null)
+          : subject.username,
         address: address !== undefined ? address : subject.address,
         city: city !== undefined ? city : subject.city,
         state: state !== undefined ? state : subject.state,

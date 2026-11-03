@@ -1,10 +1,11 @@
-export type SearchKind = 'auto' | 'name' | 'phone' | 'email' | 'address'
+export type SearchKind = 'auto' | 'name' | 'phone' | 'email' | 'address' | 'username'
 
 export interface SearchableSubject {
   id: string
   fullName: string
   phoneE164?: string | null
   email?: string | null
+  username?: string | null
   address?: string | null
   city?: string | null
   state?: string | null
@@ -24,10 +25,15 @@ function normalizePhone(value: string): string {
   return value.replace(/\D/g, '')
 }
 
+function normalizeUsername(value: string): string {
+  return value.trim().replace(/^@/, '').toLowerCase()
+}
+
 export function detectSearchKind(query: string): Exclude<SearchKind, 'auto'> {
   const trimmed = query.trim()
 
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return 'email'
+  if (/^@[a-z0-9._-]{2,64}$/i.test(trimmed)) return 'username'
 
   const digits = normalizePhone(trimmed)
   if (digits.length >= 7 && digits.length >= trimmed.replace(/\s/g, '').length - 5) {
@@ -57,6 +63,17 @@ function scoreString(candidate: string | null | undefined, query: string): numbe
   return overlap >= 0.5 ? 0.45 + overlap * 0.25 : 0
 }
 
+function scoreUsername(candidate: string | null | undefined, query: string): number {
+  if (!candidate) return 0
+  const a = normalizeUsername(candidate)
+  const b = normalizeUsername(query)
+  if (!a || !b) return 0
+  if (a === b) return 1
+  if (a.startsWith(b) || b.startsWith(a)) return 0.88
+  if (a.includes(b) || b.includes(a)) return 0.7
+  return 0
+}
+
 function scorePhone(candidate: string | null | undefined, query: string): number {
   if (!candidate) return 0
   const a = normalizePhone(candidate)
@@ -79,6 +96,8 @@ export function scoreSubjectMatch(
     scores.push({ field: 'phone', score: scorePhone(subject.phoneE164, query) })
   } else if (detectedKind === 'email') {
     scores.push({ field: 'email', score: scoreString(subject.email, query) })
+  } else if (detectedKind === 'username') {
+    scores.push({ field: 'username', score: scoreUsername(subject.username, query) })
   } else if (detectedKind === 'address') {
     scores.push({ field: 'address', score: scoreString(subject.address, query) })
     scores.push({ field: 'city', score: scoreString(subject.city, query) * 0.7 })

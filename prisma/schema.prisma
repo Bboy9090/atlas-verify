@@ -38,6 +38,7 @@ model Subject {
   fullName          String
   phoneE164         String?
   email             String?
+  username          String?
   address           String?
   city              String?
   state             String?
@@ -50,6 +51,7 @@ model Subject {
   updatedAt         DateTime            @updatedAt
 
   @@index([caseId])
+  @@index([username])
 }
 
 model EnrichmentResult {
@@ -74,7 +76,12 @@ model EvidenceFact {
   field               String
   value               Json             @db.JsonB
   sourceName          String
+  sourceType          String?
   sourceUrl           String?
+  sourceLocator       String?
+  normalizedValue     String?
+  rawRecordHash       String?
+  legalBasis          String?
   retrievedAt         DateTime
   observedAt          DateTime?
   confidenceScore     Float            @default(0)
@@ -86,6 +93,8 @@ model EvidenceFact {
   @@index([enrichmentResultId])
   @@index([field])
   @@index([sourceName])
+  @@index([sourceType])
+  @@index([rawRecordHash])
   @@index([retrievedAt])
 }
 
