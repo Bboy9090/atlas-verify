@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { Prisma } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
@@ -120,9 +121,9 @@ export async function POST(_request: Request, { params }: RouteParams) {
       baselineHash: snapshot.hash,
       baselineFactCount: snapshot.factCount,
       baselineSourceCount: snapshot.sourceCount,
-      baselineManifest: snapshot.manifest,
+      baselineManifest: snapshot.manifest as Prisma.InputJsonValue,
       lastCheckedAt: now,
-      lastChangeSummary: null,
+      lastChangeSummary: Prisma.JsonNull,
     },
     create: {
       userId,
@@ -131,7 +132,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
       baselineHash: snapshot.hash,
       baselineFactCount: snapshot.factCount,
       baselineSourceCount: snapshot.sourceCount,
-      baselineManifest: snapshot.manifest,
+      baselineManifest: snapshot.manifest as Prisma.InputJsonValue,
       lastCheckedAt: now,
     },
   })
@@ -147,7 +148,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
         kind: existing ? 'baseline_reset' : 'baseline_created',
         addedCount: 0,
         removedCount: 0,
-      },
+      } as Prisma.InputJsonValue,
       checkedAt: now,
     },
   })
