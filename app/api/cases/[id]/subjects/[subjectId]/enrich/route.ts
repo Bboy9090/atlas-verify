@@ -108,12 +108,36 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         input = subject.phoneE164
       } else if (provider.type === 'web_search') {
         input = subject.fullName
-      } else {
-        continue // Skip if no suitable input
+      } else if (provider.type !== 'person_search') {
+        continue
       }
 
       try {
-        const enrichmentPayload = await provider.lookup(input)
+        const enrichmentPayload = provider.type === 'person_search'
+          ? provider.lookupSubject
+            ? await provider.lookupSubject({
+                fullName: subject.fullName,
+                phoneE164: subject.phoneE164,
+                email: subject.email,
+                username: subject.username,
+                address: subject.address,
+                city: subject.city,
+                state: subject.state,
+              })
+            : {
+                success: false,
+                data: {},
+                confidenceScore: 0,
+                error: 'Person-search provider does not implement structured lookup',
+              }
+          : provider.lookup
+            ? await provider.lookup(input)
+            : {
+                success: false,
+                data: {},
+                confidenceScore: 0,
+                error: 'Provider does not implement lookup',
+              }
         
         const result = await prisma.enrichmentResult.create({
           data: {
