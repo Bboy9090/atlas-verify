@@ -93,5 +93,7 @@ export type AuditAction =
   | 'RUN_ENRICHMENT'
   | 'RUN_SEARCH'
   | 'EXPORT_CASE_REPORT'
+  | 'SUBMIT_EVIDENCE_DISPUTE'
+  | 'RESOLVE_EVIDENCE_DISPUTE'
   | 'LOGIN'
   | 'LOGOUT';
