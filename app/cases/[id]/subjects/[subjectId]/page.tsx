@@ -19,6 +19,7 @@ import {
   GitBranch,
   History,
   Flag,
+  BellRing,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
@@ -269,6 +270,12 @@ export default function SubjectProfilePage({
               Evidence-backed profile in {data.case.title}
             </p>
           </div>
+          <Link href={`/monitoring?caseId=${data.case.id}&subjectId=${subject.id}`}>
+            <Button variant="outline" className="border-blue-500/30 text-blue-300">
+              <BellRing className="mr-2 h-4 w-4" />
+              Monitoring
+            </Button>
+          </Link>
           <Link href={`/cases/${data.case.id}/subjects/${subject.id}/evidence-review`}>
             <Button variant="outline" className="border-yellow-500/30 text-yellow-300">
               <Flag className="mr-2 h-4 w-4" />
