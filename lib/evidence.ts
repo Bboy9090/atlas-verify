@@ -3,7 +3,12 @@ export interface EvidenceFactLike {
   field: string
   value: unknown
   sourceName: string
+  sourceType?: string | null
   sourceUrl?: string | null
+  sourceLocator?: string | null
+  normalizedValue?: string | null
+  rawRecordHash?: string | null
+  legalBasis?: string | null
   retrievedAt: Date | string
   observedAt?: Date | string | null
   confidenceScore: number
