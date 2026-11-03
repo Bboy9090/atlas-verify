@@ -4,11 +4,17 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { isPrivacyReviewer } from '@/lib/privacy-review'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const user = session.user as { email?: string | null }
+  if (!isPrivacyReviewer(user.email)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const requests = await prisma.suppressionRequest.findMany({
@@ -36,7 +42,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as { id: string }).id
+  const user = session.user as { id: string; email?: string | null }
+  if (!isPrivacyReviewer(user.email)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const userId = user.id
   const rateLimit = checkRateLimit(userId)
   if (!rateLimit.allowed) {
     return NextResponse.json({ error: 'Rate limit exceeded', resetIn: rateLimit.resetIn }, { status: 429 })
