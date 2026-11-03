@@ -18,6 +18,7 @@ model User {
   auditLogs     AuditLog[]
   evidenceDisputes EvidenceDispute[]
   reviewedSuppressionRequests SuppressionRequest[] @relation("SuppressionReviewer")
+  subjectMonitors SubjectMonitor[]
 }
 
 model Case {
@@ -49,6 +50,7 @@ model Subject {
   case              Case                @relation(fields: [caseId], references: [id], onDelete: Cascade)
   enrichmentResults EnrichmentResult[]
   auditLogs         AuditLog[]
+  monitors          SubjectMonitor[]
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
@@ -142,6 +144,46 @@ model SuppressionRequest {
   @@index([identifierType, identifierHash])
   @@index([status])
   @@index([createdAt])
+}
+
+
+model SubjectMonitor {
+  id                  String         @id @default(uuid())
+  userId              String
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId           String
+  subject             Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  enabled             Boolean        @default(true)
+  baselineHash        String
+  baselineFactCount   Int            @default(0)
+  baselineSourceCount Int            @default(0)
+  lastCheckedAt       DateTime?
+  lastChangedAt       DateTime?
+  lastChangeSummary   Json?          @db.JsonB
+  checks              MonitorCheck[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@unique([userId, subjectId])
+  @@index([userId])
+  @@index([subjectId])
+  @@index([enabled])
+}
+
+model MonitorCheck {
+  id            String         @id @default(uuid())
+  monitorId     String
+  monitor       SubjectMonitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  snapshotHash  String
+  factCount     Int
+  sourceCount   Int
+  changed       Boolean        @default(false)
+  changeSummary Json?          @db.JsonB
+  checkedAt     DateTime       @default(now())
+
+  @@index([monitorId])
+  @@index([checkedAt])
+  @@index([changed])
 }
 
 model AuditLog {
