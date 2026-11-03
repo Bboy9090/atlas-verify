@@ -139,6 +139,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 error: 'Provider does not implement lookup',
               }
         
+        if (!provider.sourcePolicy.mayPersist) {
+          results.push({
+            provider: provider.name,
+            providerType: provider.type,
+            payload: enrichmentPayload,
+            confidenceScore: enrichmentPayload.confidenceScore,
+            evidenceFacts: enrichmentPayload.evidenceFacts ?? [],
+            ephemeral: true,
+            persisted: false,
+          })
+
+          await createAuditLog(userId, 'RUN_ENRICHMENT', {
+            subjectId,
+            caseId,
+            provider: provider.name,
+            providerType: provider.type,
+            success: enrichmentPayload.success,
+            confidenceScore: enrichmentPayload.confidenceScore,
+            persisted: false,
+            sourceKind: provider.sourcePolicy.sourceKind,
+          }, subjectId)
+
+          continue
+        }
+
         const result = await prisma.enrichmentResult.create({
           data: {
             subjectId,
@@ -207,7 +232,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           provider: provider.name,
           providerType: provider.type,
           success: enrichmentPayload.success,
-          confidenceScore: enrichmentPayload.confidenceScore
+          confidenceScore: enrichmentPayload.confidenceScore,
+          persisted: true,
+          sourceKind: provider.sourcePolicy.sourceKind,
         }, subjectId)
       } catch (err) {
         console.error(`Provider ${provider.name} failed:`, err)
