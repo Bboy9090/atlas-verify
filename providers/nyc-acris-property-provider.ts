@@ -286,8 +286,12 @@ const nycAcrisPropertyProvider: EnrichmentProvider = {
             : null
           const address = [property.streetNumber, property.streetName, property.unit ? `Unit ${property.unit}` : null]
             .filter(Boolean).join(' ')
-          if (bbl) facts.push(fact('property.bbl', bbl, documentId, retrievedAt))
-          if (address) facts.push(fact('property.address', address, documentId, retrievedAt, { borough: property.borough }))
+          const bblFact = bbl ? fact('property.bbl', bbl, documentId, retrievedAt) : null
+          const addressFact = address
+            ? fact('property.address', address, documentId, retrievedAt, { borough: property.borough })
+            : null
+          if (bblFact) facts.push(bblFact)
+          if (addressFact) facts.push(addressFact)
         }
 
         evidenceFacts.push(...facts.filter(Boolean))
