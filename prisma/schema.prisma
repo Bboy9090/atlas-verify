@@ -16,6 +16,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   cases         Case[]
   auditLogs     AuditLog[]
+  evidenceDisputes EvidenceDispute[]
 }
 
 model Case {
@@ -89,6 +90,7 @@ model EvidenceFact {
   conflictCount       Int              @default(0)
   metadata            Json?            @db.JsonB
   createdAt           DateTime         @default(now())
+  disputes            EvidenceDispute[]
 
   @@index([enrichmentResultId])
   @@index([field])
@@ -96,6 +98,27 @@ model EvidenceFact {
   @@index([sourceType])
   @@index([rawRecordHash])
   @@index([retrievedAt])
+}
+
+
+model EvidenceDispute {
+  id              String       @id @default(uuid())
+  evidenceFactId  String
+  evidenceFact    EvidenceFact @relation(fields: [evidenceFactId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          String       @default("open") // 'open' | 'resolved' | 'rejected'
+  reason          String
+  requestedValue  Json?        @db.JsonB
+  resolutionNote  String?
+  resolvedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([evidenceFactId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model AuditLog {
