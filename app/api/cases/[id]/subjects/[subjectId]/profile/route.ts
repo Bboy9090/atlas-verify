@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { buildProfileIntelligence } from '@/lib/profile-intelligence'
+import { buildEvidenceTimeline, buildRelationshipGraph } from '@/lib/evidence-views'
 
 interface RouteParams {
   params: Promise<{ id: string; subjectId: string }>
@@ -66,6 +67,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }))
   )
 
+  const profile = buildProfileIntelligence(facts)
+  const timeline = buildEvidenceTimeline(facts)
+  const relationshipGraph = buildRelationshipGraph(subject.id, subject.fullName, profile)
+
   return NextResponse.json({
     subject: {
       id: subject.id,
@@ -79,7 +84,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
       notes: subject.notes,
     },
     case: subject.case,
-    profile: buildProfileIntelligence(facts),
+    profile,
+    timeline,
+    relationshipGraph,
     evidenceFactCount: facts.length,
   })
 }
