@@ -3,8 +3,8 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
-COPY package.json yarn.lock* ./
-RUN yarn install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # ── Stage 2: Build ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
@@ -16,7 +16,7 @@ COPY . .
 
 # Generate Prisma client before building
 RUN npx prisma generate
-RUN yarn build
+RUN npm run build
 
 # ── Stage 3: Production image ─────────────────────────────────────────────────
 FROM node:20-alpine AS runner
