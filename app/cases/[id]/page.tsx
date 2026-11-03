@@ -473,9 +473,18 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Link href={`/cases/${caseData.id}/subjects/${subject.id}`}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-slate-600 text-slate-300 hover:text-white"
+                          >
+                            Profile
+                          </Button>
+                        </Link>
                         <Button
                           size="sm"
-                          onClick={() => handleRunEnrichment(subject)}
+                          onClick={() => handleRunEnrichment(subject)
                           disabled={enrichingSubjects.has(subject.id)}
                           className="bg-green-600 hover:bg-green-700"
                         >
