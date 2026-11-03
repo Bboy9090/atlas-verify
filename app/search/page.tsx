@@ -4,7 +4,20 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Phone, Mail, MapPin, UserRound, ShieldCheck, Database, ArrowRight, AtSign } from 'lucide-react'
+import {
+  Search,
+  Phone,
+  Mail,
+  MapPin,
+  UserRound,
+  ShieldCheck,
+  Database,
+  ArrowRight,
+  AtSign,
+  Clock3,
+  TriangleAlert,
+  Users,
+} from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -53,13 +66,53 @@ interface SearchResponse {
   }
 }
 
+interface ExternalCandidate {
+  index: number
+  fullName: string | null
+  age: number | null
+  dob: string | null
+  addresses: string[]
+  phones: string[]
+  emails: string[]
+  relatives: string[]
+  associates: string[]
+  optedOut: boolean
+  publicRecord: boolean
+}
+
+interface ExternalSearchResponse {
+  available: boolean
+  queryType: Exclude<SearchKind, 'auto'>
+  provider?: {
+    name: string
+    sourceKind: string
+    licenseName: string | null
+    termsUrl: string | null
+  }
+  candidates: ExternalCandidate[]
+  confidenceScore?: number
+  coverage: {
+    provider: string | null
+    description: string
+  }
+  policy: {
+    ephemeral: boolean
+    persisted: boolean
+    identityProof: boolean
+    nonFCRA: boolean
+    termsUrl?: string | null
+  }
+  error?: string
+}
+
 export default function SearchPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<SearchKind>('auto')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SearchResponse | null>(null)
+  const [external, setExternal] = useState<ExternalSearchResponse | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -74,16 +127,33 @@ export default function SearchPage() {
     }
 
     setLoading(true)
+    setExternal(null)
+
     try {
       const params = new URLSearchParams({ q: trimmed, type: kind })
-      const response = await fetch(`/api/search?${params.toString()}`)
-      const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Search failed')
+      const [workspaceResponse, externalResponse] = await Promise.all([
+        fetch(`/api/search?${params.toString()}`, { cache: 'no-store' }),
+        fetch('/api/search/external', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ q: trimmed, type: kind }),
+        }),
+      ])
+
+      const workspaceData = await workspaceResponse.json()
+      if (!workspaceResponse.ok) {
+        throw new Error(workspaceData.error || 'Workspace search failed')
       }
+      setResult(workspaceData)
 
-      setResult(data)
+      const externalData = await externalResponse.json()
+      setExternal(externalData)
+
+      if (!externalResponse.ok && externalResponse.status !== 503 && externalResponse.status !== 502) {
+        toast.error(externalData.error || 'Live licensed search failed')
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Search failed')
     } finally {
@@ -107,7 +177,7 @@ export default function SearchPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">Search</h1>
           <p className="mt-1 text-slate-400">
-            Search people already stored in your case workspace by name, phone, email, address, or username.
+            Search your saved case workspace and, when configured, query a licensed people-search provider without persisting live provider results.
           </p>
         </div>
 
@@ -157,14 +227,17 @@ export default function SearchPage() {
                   </CardDescription>
                 </CardHeader>
               </Card>
-              <Card className="border-yellow-500/20 bg-yellow-500/5">
+              <Card className={external?.available
+                ? 'border-blue-500/20 bg-blue-500/5'
+                : 'border-yellow-500/20 bg-yellow-500/5'}
+              >
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base text-yellow-300">
+                  <CardTitle className={`flex items-center gap-2 text-base ${external?.available ? 'text-blue-300' : 'text-yellow-300'}`}>
                     <Database className="h-4 w-4" />
-                    External coverage
+                    Live licensed coverage
                   </CardTitle>
                   <CardDescription className="text-slate-400">
-                    {result.coverage.externalProviders.description}
+                    {external?.coverage.description || result.coverage.externalProviders.description}
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -173,102 +246,222 @@ export default function SearchPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-slate-400">
                 Detected as <span className="font-medium text-slate-200">{result.detectedKind}</span>
-                {' '}• {result.candidates.length} candidate{result.candidates.length === 1 ? '' : 's'}
+                {' '}• {result.candidates.length} saved candidate{result.candidates.length === 1 ? '' : 's'}
+                {' '}• {external?.candidates.length ?? 0} live candidate{external?.candidates.length === 1 ? '' : 's'}
               </div>
             </div>
 
-            {result.candidates.length === 0 ? (
-              <Card className="border-slate-700 bg-slate-800/50">
-                <CardContent className="py-10 text-center text-slate-400">
-                  No matching subject is stored in your workspace yet.
+            {external && (
+              <Card className="border-blue-500/20 bg-slate-800/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <Database className="h-5 w-5 text-blue-400" />
+                    Live licensed results
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Ephemeral leads only. These results are not saved, are not identity proof, and are not for employment, tenant, credit, insurance, or other FCRA eligibility decisions.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!external.available ? (
+                    <div className="rounded-lg border border-dashed border-slate-700 p-5 text-sm text-slate-400">
+                      {external.coverage.description}
+                    </div>
+                  ) : external.error ? (
+                    <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-300">
+                      {external.error}
+                    </div>
+                  ) : external.candidates.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-slate-700 p-5 text-sm text-slate-400">
+                      The licensed provider returned no candidates for this query.
+                    </div>
+                  ) : (
+                    external.candidates.map(candidate => (
+                      <div
+                        key={candidate.index}
+                        className="rounded-lg border border-slate-700 bg-slate-900/70 p-4"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 text-lg font-semibold text-white">
+                              <UserRound className="h-5 w-5 text-blue-400" />
+                              {candidate.fullName || 'Unnamed provider candidate'}
+                            </div>
+                            <div className="mt-1 text-sm text-slate-400">
+                              {candidate.age !== null ? `Age ${candidate.age}` : 'Age not supplied'}
+                              {candidate.dob ? ` • DOB ${candidate.dob}` : ''}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline" className="border-blue-500/30 text-blue-300">
+                              Ephemeral
+                            </Badge>
+                            <Badge variant="outline" className="border-yellow-500/30 text-yellow-300">
+                              Lead — verify independently
+                            </Badge>
+                            {candidate.optedOut && (
+                              <Badge variant="outline" className="border-red-500/30 text-red-300">
+                                <TriangleAlert className="mr-1 h-3 w-3" />
+                                Provider opt-out flag
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          {candidate.addresses.length > 0 && (
+                            <div>
+                              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                                <MapPin className="h-3 w-3" /> Addresses
+                              </div>
+                              <div className="space-y-1 text-sm text-slate-300">
+                                {candidate.addresses.map(address => <div key={address}>{address}</div>)}
+                              </div>
+                            </div>
+                          )}
+                          {candidate.phones.length > 0 && (
+                            <div>
+                              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                                <Phone className="h-3 w-3" /> Phones
+                              </div>
+                              <div className="space-y-1 text-sm text-slate-300">
+                                {candidate.phones.map(phone => <div key={phone}>{phone}</div>)}
+                              </div>
+                            </div>
+                          )}
+                          {candidate.emails.length > 0 && (
+                            <div>
+                              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                                <Mail className="h-3 w-3" /> Emails
+                              </div>
+                              <div className="space-y-1 break-all text-sm text-slate-300">
+                                {candidate.emails.map(email => <div key={email}>{email}</div>)}
+                              </div>
+                            </div>
+                          )}
+                          {(candidate.relatives.length > 0 || candidate.associates.length > 0) && (
+                            <div>
+                              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                                <Users className="h-3 w-3" /> Reported relationships
+                              </div>
+                              <div className="space-y-1 text-sm text-slate-300">
+                                {candidate.relatives.slice(0, 6).map(name => <div key={`relative-${name}`}>Relative: {name}</div>)}
+                                {candidate.associates.slice(0, 6).map(name => <div key={`associate-${name}`}>Associate: {name}</div>)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                  <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-700 pt-3 text-xs text-slate-500">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock3 className="h-3 w-3" />
+                      No provider payload persisted
+                    </span>
+                    <span>{external.provider?.licenseName || external.provider?.name || 'Licensed provider'}</span>
+                    <span>Non-FCRA consumer research</span>
+                  </div>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="space-y-3">
-                {result.candidates.map(candidate => (
-                  <Card key={candidate.subject.id} className="border-slate-700 bg-slate-800/50">
-                    <CardHeader>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <CardTitle className="flex items-center gap-2 text-white">
-                            <UserRound className="h-5 w-5 text-blue-400" />
-                            {candidate.subject.fullName}
-                          </CardTitle>
-                          <CardDescription className="mt-1 text-slate-400">
-                            Case: {candidate.case.title}
-                          </CardDescription>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-300">
-                            {Math.round(candidate.score * 100)}%
-                          </div>
-                          <div className="text-xs text-slate-500">match score</div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex flex-wrap gap-2">
-                        {candidate.matchedFields.map(field => (
-                          <Badge key={field} variant="outline" className="border-blue-500/30 text-blue-300">
-                            matched {field}
-                          </Badge>
-                        ))}
-                        {candidate.evidence.sourceCount > 0 && (
-                          <Badge variant="outline" className="border-green-500/30 text-green-300">
-                            {candidate.evidence.sourceCount} evidence source{candidate.evidence.sourceCount === 1 ? '' : 's'}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="grid gap-2 text-sm text-slate-300 md:grid-cols-2">
-                        {candidate.subject.phoneE164 && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-slate-500" />
-                            {candidate.subject.phoneE164}
-                          </div>
-                        )}
-                        {candidate.subject.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-slate-500" />
-                            {candidate.subject.email}
-                          </div>
-                        )}
-                        {candidate.subject.username && (
-                          <div className="flex items-center gap-2">
-                            <AtSign className="h-4 w-4 text-slate-500" />
-                            {candidate.subject.username}
-                          </div>
-                        )}
-                        {(candidate.subject.address || candidate.subject.city || candidate.subject.state) && (
-                          <div className="flex items-center gap-2 md:col-span-2">
-                            <MapPin className="h-4 w-4 text-slate-500" />
-                            {[candidate.subject.address, candidate.subject.city, candidate.subject.state]
-                              .filter(Boolean)
-                              .join(', ')}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-700 pt-3 text-xs text-slate-500">
-                        <span>
-                          {candidate.evidence.factCount} evidence fact{candidate.evidence.factCount === 1 ? '' : 's'}
-                          {candidate.evidence.latestEvidenceAt
-                            ? ` • latest ${new Date(candidate.evidence.latestEvidenceAt).toLocaleDateString()}`
-                            : ''}
-                        </span>
-                        <Link
-                          href={`/cases/${candidate.case.id}`}
-                          className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"
-                        >
-                          Open case
-                          <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             )}
+
+            <Card className="border-slate-700 bg-slate-800/50">
+              <CardHeader>
+                <CardTitle className="text-white">Saved workspace matches</CardTitle>
+                <CardDescription className="text-slate-400">
+                  Subjects already stored in cases you own, ranked by identifier match and supporting evidence.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {result.candidates.length === 0 ? (
+                  <div className="py-6 text-center text-slate-400">
+                    No matching subject is stored in your workspace yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {result.candidates.map(candidate => (
+                      <div key={candidate.subject.id} className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 font-semibold text-white">
+                              <UserRound className="h-5 w-5 text-blue-400" />
+                              {candidate.subject.fullName}
+                            </div>
+                            <div className="mt-1 text-sm text-slate-400">Case: {candidate.case.title}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-blue-300">
+                              {Math.round(candidate.score * 100)}%
+                            </div>
+                            <div className="text-xs text-slate-500">match score</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {candidate.matchedFields.map(field => (
+                            <Badge key={field} variant="outline" className="border-blue-500/30 text-blue-300">
+                              matched {field}
+                            </Badge>
+                          ))}
+                          {candidate.evidence.sourceCount > 0 && (
+                            <Badge variant="outline" className="border-green-500/30 text-green-300">
+                              {candidate.evidence.sourceCount} evidence source{candidate.evidence.sourceCount === 1 ? '' : 's'}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="mt-4 grid gap-2 text-sm text-slate-300 md:grid-cols-2">
+                          {candidate.subject.phoneE164 && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-slate-500" />
+                              {candidate.subject.phoneE164}
+                            </div>
+                          )}
+                          {candidate.subject.email && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-slate-500" />
+                              {candidate.subject.email}
+                            </div>
+                          )}
+                          {candidate.subject.username && (
+                            <div className="flex items-center gap-2">
+                              <AtSign className="h-4 w-4 text-slate-500" />
+                              {candidate.subject.username}
+                            </div>
+                          )}
+                          {(candidate.subject.address || candidate.subject.city || candidate.subject.state) && (
+                            <div className="flex items-center gap-2 md:col-span-2">
+                              <MapPin className="h-4 w-4 text-slate-500" />
+                              {[candidate.subject.address, candidate.subject.city, candidate.subject.state]
+                                .filter(Boolean)
+                                .join(', ')}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-700 pt-3 text-xs text-slate-500">
+                          <span>
+                            {candidate.evidence.factCount} evidence fact{candidate.evidence.factCount === 1 ? '' : 's'}
+                            {candidate.evidence.latestEvidenceAt
+                              ? ` • latest ${new Date(candidate.evidence.latestEvidenceAt).toLocaleDateString()}`
+                              : ''}
+                          </span>
+                          <Link
+                            href={`/cases/${candidate.case.id}`}
+                            className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                          >
+                            Open case
+                            <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
