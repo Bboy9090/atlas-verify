@@ -145,7 +145,7 @@ function evidenceForPerson(
     sourceType: 'licensed_api' as const,
     sourceUrl: 'https://enformiongo.readme.io/reference/person-search',
     sourceLocator: locator,
-    legalBasis: 'https://go.enformion.com/terms-of-service/',
+    legalBasis: 'https://go.enformion.com/terms/',
     retrievedAt,
   }
 
@@ -287,7 +287,7 @@ const enformionPersonSearchProvider: EnrichmentProvider = {
   sourcePolicy: {
     sourceKind: 'licensed_api',
     production: true,
-    termsUrl: 'https://go.enformion.com/terms-of-service/',
+    termsUrl: 'https://go.enformion.com/terms/',
     licenseName: 'EnformionGO Person Search',
     freshnessSeconds: 0,
     allowedPurposes: [
@@ -325,7 +325,12 @@ const enformionPersonSearchProvider: EnrichmentProvider = {
       }
     }
 
-    const response = await fetch('https://devapi.enformion.com/PersonSearch', {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12_000)
+
+    let response: Response
+    try {
+      response = await fetch('https://devapi.enformion.com/PersonSearch', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -337,7 +342,20 @@ const enformionPersonSearchProvider: EnrichmentProvider = {
       },
       body: JSON.stringify(body),
       cache: 'no-store',
-    })
+      signal: controller.signal,
+      })
+    } catch (error) {
+      return {
+        success: false,
+        data: {},
+        confidenceScore: 0,
+        error: error instanceof Error && error.name === 'AbortError'
+          ? 'EnformionGO Person Search timed out'
+          : 'EnformionGO Person Search request failed',
+      }
+    } finally {
+      clearTimeout(timeout)
+    }
 
     const raw = await response.text()
     let parsed: EnformionResponse | EnformionPerson | EnformionPerson[] = {}
