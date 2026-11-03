@@ -3,7 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Shield, FileText, History, LogOut, Menu, X, FileCheck, LayoutDashboard, UserRound, Search, Database, BellRing } from 'lucide-react'
+import { Shield, FileText, History, LogOut, Menu, X, FileCheck, LayoutDashboard, UserRound, Search, Database, BellRing, Car } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 
@@ -19,6 +19,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/search', label: 'Search', icon: Search },
+    { href: '/vehicle', label: 'Vehicle VIN', icon: Car },
     { href: '/cases', label: 'Cases', icon: FileText },
     { href: '/sources', label: 'Sources & Coverage', icon: Database },
     { href: '/monitoring', label: 'Monitoring', icon: BellRing },
