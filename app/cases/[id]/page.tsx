@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, UserCircle, Search, Phone, Mail, MapPin, Trash2, Edit, Play, Loader2, Download, ExternalLink, ShieldCheck, TriangleAlert, Clock3 } from 'lucide-react'
+import { ArrowLeft, Plus, UserCircle, Search, Phone, Mail, MapPin, Trash2, Edit, Play, Loader2, Download, ExternalLink, ShieldCheck, TriangleAlert, Clock3, AtSign, Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,7 +22,12 @@ interface EvidenceFact {
   field: string
   value: unknown
   sourceName: string
+  sourceType: string | null
   sourceUrl: string | null
+  sourceLocator: string | null
+  normalizedValue: string | null
+  rawRecordHash: string | null
+  legalBasis: string | null
   retrievedAt: string
   observedAt: string | null
   confidenceScore: number
@@ -50,6 +55,7 @@ interface Subject {
   fullName: string
   phoneE164: string | null
   email: string | null
+  username: string | null
   address: string | null
   city: string | null
   state: string | null
@@ -82,7 +88,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false)
   const [editSubject, setEditSubject] = useState<Subject | null>(null)
   const [newSubject, setNewSubject] = useState({
-    fullName: '', phoneE164: '', email: '', address: '', city: '', state: '', notes: ''
+    fullName: '', phoneE164: '', email: '', username: '', address: '', city: '', state: '', notes: ''
   })
   const [creating, setCreating] = useState(false)
   const [enrichingSubjects, setEnrichingSubjects] = useState<Set<string>>(new Set())
@@ -180,7 +186,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
         toast.success(editSubject ? 'Subject updated' : 'Subject created')
         setSubjectDialogOpen(false)
         setEditSubject(null)
-        setNewSubject({ fullName: '', phoneE164: '', email: '', address: '', city: '', state: '', notes: '' })
+        setNewSubject({ fullName: '', phoneE164: '', email: '', username: '', address: '', city: '', state: '', notes: '' })
         fetchCase()
       } else {
         const data = await res.json()
@@ -248,6 +254,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       fullName: subject.fullName,
       phoneE164: subject.phoneE164 || '',
       email: subject.email || '',
+      username: subject.username || '',
       address: subject.address || '',
       city: subject.city || '',
       state: subject.state || '',
@@ -259,7 +266,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
   const closeDialog = () => {
     setSubjectDialogOpen(false)
     setEditSubject(null)
-    setNewSubject({ fullName: '', phoneE164: '', email: '', address: '', city: '', state: '', notes: '' })
+    setNewSubject({ fullName: '', phoneE164: '', email: '', username: '', address: '', city: '', state: '', notes: '' })
   }
 
   const allResults = caseData?.subjects.flatMap(s => 
@@ -359,6 +366,15 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                         value={newSubject.email}
                         onChange={(e) => setNewSubject({ ...newSubject, email: e.target.value })}
                         placeholder="john@example.com"
+                        className="bg-slate-900 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-slate-300">Username / Handle</Label>
+                      <Input
+                        value={newSubject.username}
+                        onChange={(e) => setNewSubject({ ...newSubject, username: e.target.value })}
+                        placeholder="username or @username"
                         className="bg-slate-900 border-slate-600 text-white"
                       />
                     </div>
@@ -502,6 +518,12 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                             {subject.email}
                           </div>
                         )}
+                        {subject.username && (
+                          <div className="flex items-center gap-2 text-slate-300">
+                            <AtSign className="h-4 w-4 text-slate-500" />
+                            {subject.username}
+                          </div>
+                        )}
                         {(subject.city || subject.state) && (
                           <div className="flex items-center gap-2 text-slate-300">
                             <MapPin className="h-4 w-4 text-slate-500" />
@@ -610,10 +632,20 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
 
                                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
                                       <span>Source: {fact.sourceName}</span>
+                                      {fact.sourceType && <span>Type: {fact.sourceType.replaceAll('_', ' ')}</span>}
                                       <span>Confidence: {Math.round(fact.confidenceScore * 100)}%</span>
                                       <span>
                                         Retrieved {new Date(fact.retrievedAt).toLocaleString()}
                                       </span>
+                                      {fact.rawRecordHash && (
+                                        <span className="inline-flex items-center gap-1" title={fact.rawRecordHash}>
+                                          <Fingerprint className="h-3 w-3" />
+                                          Evidence hash {fact.rawRecordHash.slice(0, 12)}…
+                                        </span>
+                                      )}
+                                      {fact.legalBasis && (
+                                        <span title={fact.legalBasis}>Terms/provenance recorded</span>
+                                      )}
                                       {fact.sourceUrl && (
                                         <a
                                           href={fact.sourceUrl}
