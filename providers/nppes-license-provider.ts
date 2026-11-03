@@ -22,7 +22,9 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function str(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value.trim() : null
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return null
 }
 
 function bool(value: unknown): boolean | null {
