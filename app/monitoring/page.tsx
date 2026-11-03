@@ -175,18 +175,18 @@ export default function MonitoringPage() {
     }
   }
 
-  const checkMonitor = async (monitor: Monitor) => {
-    setWorkingId(monitor.id)
+  const checkMonitor = async (monitorId: string) => {
+    setWorkingId(monitorId)
     try {
-      const response = await fetch(`/api/monitoring/${monitor.id}/check`, {
+      const response = await fetch(`/api/monitoring/${monitorId}/check`, {
         method: 'POST',
       })
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'Monitor check failed')
       toast.success(body.message || 'Monitor checked')
       await loadMonitors()
-      if (focusSubjectId === monitor.subject.id) {
-        await loadFocusedSubject(monitor.subject.case.id, monitor.subject.id)
+      if (focusCaseId && focusSubjectId) {
+        await loadFocusedSubject(focusCaseId, focusSubjectId)
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Monitor check failed')
@@ -275,7 +275,7 @@ export default function MonitoringPage() {
               {focus.monitor && (
                 <Button
                   variant="outline"
-                  onClick={() => checkMonitor(focus.monitor as Monitor)}
+                  onClick={() => checkMonitor(focus.monitor!.id)}
                   disabled={workingId === focus.monitor.id}
                   className="border-slate-600 text-slate-300"
                 >
@@ -387,7 +387,7 @@ export default function MonitoringPage() {
                     <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
-                        onClick={() => checkMonitor(monitor)}
+                        onClick={() => checkMonitor(monitor.id)}
                         disabled={workingId === monitor.id}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
