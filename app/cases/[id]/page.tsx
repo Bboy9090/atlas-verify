@@ -318,6 +318,16 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                 <SelectItem value="closed" className="text-slate-200">Closed</SelectItem>
               </SelectContent>
             </Select>
+            <Link href={`/cases/${caseData.id}/report`}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-blue-500/40 text-blue-300 hover:text-white h-9"
+              >
+                <Fingerprint className="h-4 w-4 mr-1" />
+                Full Report
+              </Button>
+            </Link>
             <Button
               variant="outline"
               size="sm"
