@@ -75,6 +75,29 @@ interface RelationshipGraphEdge {
   label: string
 }
 
+interface ResolutionValue {
+  field: string
+  canonicalValue: string
+  sourceCount: number
+  factCount: number
+  sources: string[]
+  averageConfidence: number
+}
+
+interface EntityResolutionSummary {
+  strength: 'none' | 'weak' | 'moderate' | 'strong'
+  score: number
+  corroboratedIdentifiers: number
+  conflictedIdentifiers: number
+  totalIdentifiers: number
+  strongestSignals: ResolutionValue[]
+  conflicts: Array<{
+    field: string
+    values: ResolutionValue[]
+  }>
+  identityConfirmed: false
+}
+
 interface ProfileResponse {
   subject: {
     id: string
@@ -108,6 +131,7 @@ interface ProfileResponse {
     nodes: RelationshipGraphNode[]
     edges: RelationshipGraphEdge[]
   }
+  resolution: EntityResolutionSummary
   evidenceFactCount: number
 }
 
@@ -317,6 +341,103 @@ export default function SubjectProfilePage({
               <div className="flex items-center gap-2 md:col-span-2">
                 <MapPin className="h-4 w-4 text-slate-500" />
                 {[subject.address, subject.city, subject.state].filter(Boolean).join(', ')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-700 bg-slate-800/50">
+          <CardHeader>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <ShieldCheck className="h-5 w-5 text-blue-400" />
+                  Cross-source resolution
+                </CardTitle>
+                <CardDescription className="mt-1 text-slate-400">
+                  Conservative evidence correlation across exact canonical values and distinct sources. This is not automatic identity confirmation.
+                </CardDescription>
+              </div>
+              <Badge
+                variant="outline"
+                className={
+                  data.resolution.strength === 'strong'
+                    ? 'border-green-500/40 text-green-300'
+                    : data.resolution.strength === 'moderate'
+                      ? 'border-blue-500/40 text-blue-300'
+                      : data.resolution.strength === 'weak'
+                        ? 'border-yellow-500/40 text-yellow-300'
+                        : 'border-slate-600 text-slate-400'
+                }
+              >
+                {data.resolution.strength} · {Math.round(data.resolution.score * 100)}%
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                <div className="text-2xl font-bold text-green-300">{data.resolution.corroboratedIdentifiers}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Corroborated identifiers</div>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                <div className="text-2xl font-bold text-red-300">{data.resolution.conflictedIdentifiers}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Conflicted identifiers</div>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                <div className="text-2xl font-bold text-white">{data.resolution.totalIdentifiers}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Total identifiers</div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100">
+              Identity confirmed: <strong>no</strong>. Resolution strength summarizes source agreement only; it must not be treated as proof that records belong to the same person.
+            </div>
+
+            {data.resolution.strongestSignals.length > 0 && (
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Strongest signals</div>
+                <div className="space-y-2">
+                  {data.resolution.strongestSignals.map(signal => (
+                    <div key={`${signal.field}:${signal.canonicalValue}`} className="rounded-lg border border-green-500/20 bg-green-500/5 p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <div className="break-words text-sm font-medium text-white">{signal.canonicalValue}</div>
+                          <div className="mt-1 text-xs text-slate-500">{signal.field}</div>
+                        </div>
+                        <Badge variant="outline" className="border-green-500/30 text-green-300">
+                          {signal.sourceCount} sources
+                        </Badge>
+                      </div>
+                      <div className="mt-2 text-xs text-slate-400">
+                        {signal.factCount} facts · {Math.round(signal.averageConfidence * 100)}% avg. confidence · {signal.sources.join(', ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {data.resolution.conflicts.length > 0 && (
+              <div>
+                <div className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-red-300">
+                  <TriangleAlert className="h-3 w-3" />
+                  Conflicts requiring review
+                </div>
+                <div className="space-y-2">
+                  {data.resolution.conflicts.map(conflict => (
+                    <div key={conflict.field} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                      <div className="text-xs font-medium text-red-200">{conflict.field}</div>
+                      <div className="mt-2 space-y-1">
+                        {conflict.values.map(value => (
+                          <div key={value.canonicalValue} className="text-sm text-slate-300">
+                            {value.canonicalValue} <span className="text-xs text-slate-500">({value.sourceCount} sources)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
