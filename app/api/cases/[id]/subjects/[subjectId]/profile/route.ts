@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { buildProfileIntelligence } from '@/lib/profile-intelligence'
 import { buildEvidenceTimeline, buildRelationshipGraph } from '@/lib/evidence-views'
+import { resolveEntityEvidence } from '@/lib/entity-resolution'
 
 interface RouteParams {
   params: Promise<{ id: string; subjectId: string }>
@@ -70,6 +71,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const profile = buildProfileIntelligence(facts)
   const timeline = buildEvidenceTimeline(facts)
   const relationshipGraph = buildRelationshipGraph(subject.id, subject.fullName, profile)
+  const resolution = resolveEntityEvidence(facts)
 
   return NextResponse.json({
     subject: {
@@ -87,6 +89,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     profile,
     timeline,
     relationshipGraph,
+    resolution,
     evidenceFactCount: facts.length,
   })
 }
