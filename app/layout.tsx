@@ -4,7 +4,7 @@ import { AuthProvider } from '@/components/auth-provider'
 import { PwaRegister } from '@/components/pwa-register'
 
 export const metadata = {
-  title: 'Bobby's Case File — People Search & Evidence Intelligence',
+  title: "Bobby's Case File — People Search & Evidence Intelligence",
   description: 'People search, public records, evidence intelligence, and case workspace',
   manifest: '/manifest.json',
   appleWebApp: {
