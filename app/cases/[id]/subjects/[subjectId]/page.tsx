@@ -98,6 +98,31 @@ interface EntityResolutionSummary {
   identityConfirmed: false
 }
 
+interface FreshnessItem {
+  id?: string
+  field: string
+  sourceName: string
+  status: 'current' | 'stale' | 'historical' | 'unknown'
+  basis: 'observed' | 'retrieved' | 'unknown'
+  timestamp: string | null
+  observedAt: string | null
+  retrievedAt: string | null
+  ageDays: number | null
+}
+
+interface FreshnessLedger {
+  generatedAt: string
+  currentThroughDays: number
+  staleThroughDays: number
+  currentCount: number
+  staleCount: number
+  historicalCount: number
+  unknownCount: number
+  lastSeenAt: string | null
+  lastRetrievedAt: string | null
+  items: FreshnessItem[]
+}
+
 interface ProfileResponse {
   subject: {
     id: string
@@ -132,6 +157,7 @@ interface ProfileResponse {
     edges: RelationshipGraphEdge[]
   }
   resolution: EntityResolutionSummary
+  freshness: FreshnessLedger
   evidenceFactCount: number
 }
 
@@ -438,6 +464,79 @@ export default function SubjectProfilePage({
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-700 bg-slate-800/50">
+          <CardHeader>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Clock3 className="h-5 w-5 text-blue-400" />
+                  Evidence freshness ledger
+                </CardTitle>
+                <CardDescription className="mt-1 text-slate-400">
+                  Freshness uses source observation time when available, otherwise retrieval time. Current means up to {data.freshness.currentThroughDays} days; stale means up to {data.freshness.staleThroughDays} days; older evidence is historical.
+                </CardDescription>
+              </div>
+              <div className="text-right text-xs text-slate-500">
+                <div>Last seen: {data.freshness.lastSeenAt ? new Date(data.freshness.lastSeenAt).toLocaleString() : 'unknown'}</div>
+                <div>Last retrieved: {data.freshness.lastRetrievedAt ? new Date(data.freshness.lastRetrievedAt).toLocaleString() : 'unknown'}</div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3">
+                <div className="text-2xl font-bold text-green-300">{data.freshness.currentCount}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Current</div>
+              </div>
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                <div className="text-2xl font-bold text-yellow-300">{data.freshness.staleCount}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Stale</div>
+              </div>
+              <div className="rounded-lg border border-slate-600 bg-slate-900/70 p-3">
+                <div className="text-2xl font-bold text-slate-200">{data.freshness.historicalCount}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Historical</div>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                <div className="text-2xl font-bold text-slate-400">{data.freshness.unknownCount}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Unknown age</div>
+              </div>
+            </div>
+
+            {data.freshness.items.length > 0 && (
+              <div className="space-y-2">
+                {data.freshness.items.map((item, index) => (
+                  <div key={item.id || `${item.field}:${item.sourceName}:${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                    <div>
+                      <div className="text-sm font-medium text-white">{item.field}</div>
+                      <div className="mt-1 text-xs text-slate-500">{item.sourceName} · {item.basis} timestamp</div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <Badge
+                        variant="outline"
+                        className={
+                          item.status === 'current'
+                            ? 'border-green-500/40 text-green-300'
+                            : item.status === 'stale'
+                              ? 'border-yellow-500/40 text-yellow-300'
+                              : item.status === 'historical'
+                                ? 'border-slate-500/40 text-slate-300'
+                                : 'border-slate-700 text-slate-500'
+                        }
+                      >
+                        {item.status}
+                      </Badge>
+                      <span className="text-slate-500">
+                        {item.timestamp ? new Date(item.timestamp).toLocaleDateString() : 'timestamp unavailable'}
+                        {item.ageDays !== null ? ` · ${item.ageDays}d` : ''}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
