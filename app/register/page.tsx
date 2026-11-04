@@ -63,7 +63,7 @@ export default function RegisterPage() {
         <CardHeader className="text-center">
           <Link href="/" className="flex items-center justify-center gap-2 mb-4">
             <Shield className="h-10 w-10 text-blue-500" />
-            <span className="text-2xl font-bold text-white">AtlasVerify</span>
+            <span className="text-2xl font-bold text-white">Bobby&apos;s Case File</span>
           </Link>
           <CardTitle className="text-white">Create Account</CardTitle>
           <CardDescription className="text-slate-400">
