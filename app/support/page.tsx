@@ -1,7 +1,7 @@
 export default function SupportPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6 text-slate-200">
-      <h1 className="text-3xl font-semibold text-white">AtlasVerify Support</h1>
+      <h1 className="text-3xl font-semibold text-white">Bobby's Case File Support</h1>
       <p>
         For technical issues, record the application version, browser/OS, affected workflow, and
         a redacted error message. Do not attach private subject records, credentials, API keys, or
