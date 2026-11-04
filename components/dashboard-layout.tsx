@@ -40,7 +40,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <header className="lg:hidden bg-slate-900 border-b border-slate-700 px-4 py-3 flex items-center justify-between">
         <Link href="/cases" className="flex items-center gap-2">
           <Shield className="h-6 w-6 text-blue-500" />
-          <span className="text-lg font-bold text-white">AtlasVerify</span>
+          <span className="text-lg font-bold text-white">Bobby&apos;s Case File</span>
         </Link>
         <Button
           variant="ghost"
@@ -64,7 +64,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="p-6 hidden lg:block">
               <Link href="/cases" className="flex items-center gap-2">
                 <Shield className="h-8 w-8 text-blue-500" />
-                <span className="text-xl font-bold text-white">AtlasVerify</span>
+                <span className="text-xl font-bold text-white">Bobby&apos;s Case File</span>
               </Link>
             </div>
 
