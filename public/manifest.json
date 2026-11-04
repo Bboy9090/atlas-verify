@@ -1,7 +1,7 @@
 {
-  "name": "AtlasVerify",
-  "short_name": "AtlasVerify",
-  "description": "Professional investigation and subject verification platform",
+  "name": "Bobby's Case File",
+  "short_name": "Case File",
+  "description": "People search, public records, evidence intelligence, and case workspace",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

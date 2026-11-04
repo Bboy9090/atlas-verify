@@ -4,13 +4,13 @@ import { AuthProvider } from '@/components/auth-provider'
 import { PwaRegister } from '@/components/pwa-register'
 
 export const metadata = {
-  title: 'AtlasVerify - Subject Intelligence Platform',
-  description: 'Professional investigation and subject verification platform',
+  title: "Bobby's Case File — People Search & Evidence Intelligence",
+  description: 'People search, public records, evidence intelligence, and case workspace',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'AtlasVerify',
+    title: "Bobby's Case File",
   },
 }
 
@@ -34,7 +34,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="AtlasVerify" />
+        <meta name="apple-mobile-web-app-title" content="Bobby&#39;s Case File" />
         <meta name="theme-color" content="#3b82f6" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
