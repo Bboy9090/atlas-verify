@@ -9,6 +9,7 @@ import './nppes-license-provider'
 import './sec-business-provider'
 import './nyc-acris-property-provider'
 import './ofac-sanctions-provider'
+import './courtlistener-provider'
 
 // Re-export provider utilities
 export { getProvider, getAllProviders, getProvidersByType, registerProvider } from './enrichment-provider'
