@@ -1,6 +1,6 @@
-# Atlas Verify
+# Bobby's Case File
 
-Atlas Verify is a case-based identity verification and enrichment platform designed for investigators, compliance teams, and analysts. It aggregates lawful public data and licensed enrichment sources into structured case files with audit logging.
+Bobby's Case File is a case-based people-search, public-records, identity-enrichment, and evidence-intelligence platform designed for lawful research, investigators, compliance teams, and analysts. It aggregates lawful public data and licensed enrichment sources into structured case files with provenance and audit logging.
 
 ---
 
@@ -139,7 +139,7 @@ Once the app is live at an **HTTPS** URL (Vercel, Railway, Render, etc.):
 1. Open **Safari** on your iPhone and navigate to the URL.
 2. Tap the **Share** button (square with upward arrow) at the bottom.
 3. Scroll down and tap **"Add to Home Screen"**.
-4. Name it *AtlasVerify* and tap **Add**.
+4. Name it *Bobby's Case File* and tap **Add**.
 
 The app opens full-screen like a native app with its own home-screen icon. No App Store needed.
 
