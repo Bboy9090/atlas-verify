@@ -14,3 +14,4 @@ import './courtlistener-provider'
 
 // Re-export provider utilities
 export { getProvider, getAllProviders, getProvidersByType, registerProvider } from './enrichment-provider'
+import './rdap-domain-provider'
