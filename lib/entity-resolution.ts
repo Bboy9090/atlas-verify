@@ -34,17 +34,49 @@ function average(values: number[]) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0
 }
 
+function resolutionFieldFamily(field: string): string {
+  const normalized = field.trim().toLowerCase()
+
+  if (
+    normalized === 'phone.e164' ||
+    normalized === 'phone.number' ||
+    normalized === 'phone.historical' ||
+    normalized === 'contact.phone' ||
+    normalized.startsWith('phone.history.') ||
+    /(^|\.)phone(\.|$)/.test(normalized)
+  ) return 'identity.phone'
+
+  if (
+    normalized === 'email.address' ||
+    normalized === 'email.historical' ||
+    normalized === 'contact.email' ||
+    normalized.startsWith('email.history.') ||
+    /(^|\.)email(s)?(\.|$)/.test(normalized)
+  ) return 'identity.email'
+
+  if (
+    normalized === 'address.current' ||
+    normalized === 'address.historical' ||
+    normalized === 'contact.address' ||
+    normalized.startsWith('address.history.') ||
+    /(^|\.)address(es)?(\.|$)/.test(normalized)
+  ) return 'identity.address'
+
+  return normalized
+}
+
 export function resolveEntityEvidence(facts: EvidenceFactLike[]): EntityResolutionSummary {
   const fields = new Map<string, Map<string, EvidenceFactLike[]>>()
 
   for (const fact of facts) {
     const canonical = fact.normalizedValue?.trim().toLowerCase() || canonicalize(fact.value)
     if (!canonical) continue
-    const byValue = fields.get(fact.field) ?? new Map<string, EvidenceFactLike[]>()
+    const fieldFamily = resolutionFieldFamily(fact.field)
+    const byValue = fields.get(fieldFamily) ?? new Map<string, EvidenceFactLike[]>()
     const bucket = byValue.get(canonical) ?? []
     bucket.push(fact)
     byValue.set(canonical, bucket)
-    fields.set(fact.field, byValue)
+    fields.set(fieldFamily, byValue)
   }
 
   const values: ResolutionValue[] = []
