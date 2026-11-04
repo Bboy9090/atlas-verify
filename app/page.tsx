@@ -29,7 +29,7 @@ export default function HomePage() {
         <nav className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="h-8 w-8 text-blue-500" />
-            <span className="text-2xl font-bold text-white">AtlasVerify</span>
+            <span className="text-2xl font-bold text-white">Bobby&apos;s Case File</span>
           </div>
           <div className="flex items-center gap-4">
             <Button asChild variant="ghost" className="min-h-11 text-slate-300 hover:text-white">
@@ -48,12 +48,11 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-          Subject Intelligence
-          <span className="block text-blue-500">Made Simple</span>
+          People Search & Evidence
+          <span className="block text-blue-500">Made Traceable</span>
         </h1>
         <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-8">
-          Professional investigation platform for managing case files, subject verification,
-          and enrichment pipelines. Built for compliance-first operations.
+          Search lawful public records, connect evidence to cases, and see where every result came from. Built for provenance, corrections, and compliance-first research.
         </p>
         <div className="flex items-center justify-center gap-4">
           <Button asChild size="lg" style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }} className="min-h-11 hover:opacity-90">
@@ -137,7 +136,7 @@ export default function HomePage() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Shield className="h-6 w-6 text-blue-500" />
-            <span className="text-lg font-semibold text-white">AtlasVerify</span>
+            <span className="text-lg font-semibold text-white">Bobby&apos;s Case File</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 text-slate-400">
             <Link href="/privacy" className="inline-flex min-h-11 items-center rounded px-2 hover:text-white transition-colors">
@@ -154,7 +153,7 @@ export default function HomePage() {
             </Link>
           </div>
           <p className="text-slate-500 text-sm">
-            © 2026 AtlasVerify. All rights reserved.
+            © 2026 Bobby's Workshop. Bobby's Case File.
           </p>
         </div>
       </footer>
