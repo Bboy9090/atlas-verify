@@ -1,0 +1,25 @@
+name: Workspace Suppression Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/api/search/route.ts'
+      - 'lib/suppression.ts'
+      - 'tests/workspace-suppression-contract.test.mjs'
+      - '.github/workflows/workspace-suppression-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  suppression-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Verify workspace suppression contract
+        run: node --test tests/workspace-suppression-contract.test.mjs
