@@ -33,7 +33,7 @@ interface ProviderItem {
 }
 
 function title(value: string) {
-  return value.replace(/_/g, ' ').replace(/w/g, match => match.toUpperCase())
+  return value.replace(/_/g, ' ').replace(/\b\w/g, match => match.toUpperCase())
 }
 
 export default function SourcesPage() {
