@@ -29,6 +29,7 @@ test('resolved correction overlay requires an accepted requested value', () => {
   assert.match(helper, /dispute\.requestedValue !== undefined/)
   assert.match(helper, /originalValue: fact\.value/)
   assert.match(helper, /effectiveValue: accepted\.requestedValue/)
+  assert.match(helper, /normalizedValue: normalizeEffectiveValue\(correction\.effectiveValue\)/)
 })
 
 test('case reports derive corrected facts and bind a correction ledger into the receipt body', () => {
