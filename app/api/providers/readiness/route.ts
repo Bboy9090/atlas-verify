@@ -113,6 +113,13 @@ export async function GET() {
       'public_record',
     ),
     item(
+      'vinaudit_vehicle_history',
+      'VinAudit vehicle history',
+      ['VINAUDIT_API_KEY', 'VINAUDIT_USERNAME', 'VINAUDIT_PASSWORD', 'VINAUDIT_REPORT_ID'],
+      'Licensed U.S. vehicle-history records, including NMVTIS-backed title and history data where returned.',
+      'licensed_api',
+    ),
+    item(
       'nppes',
       'NPPES NPI Registry',
       [],
