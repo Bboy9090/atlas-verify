@@ -50,6 +50,37 @@ interface AcrisRecord {
   filingUrl: string
 }
 
+interface AttomRecord {
+  attomId: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  postalCode: string | null
+  owners: string[]
+  propertyType: string | null
+  yearBuilt: number | null
+  beds: number | null
+  baths: number | null
+  livingArea: number | null
+  lotSize: number | null
+  assessedValue: number | null
+  taxAmount: number | null
+  taxYear: string | null
+  lastSaleAmount: number | null
+  lastSaleDate: string | null
+  sourceUrl: string
+}
+
+interface AttomResponse {
+  available: boolean
+  provider?: { name: string; sourceKind: string; licenseName: string | null; termsUrl: string | null }
+  data?: { records: AttomRecord[]; resultCount: number; coverage: string; limitation: string }
+  evidenceFacts?: Array<{ field: string; value: unknown; sourceName: string }>
+  coverage?: { provider: string; description: string }
+  policy?: { geographicCoverage: string; currentOwnershipClaimed: boolean; description?: string }
+  error?: string
+}
+
 interface PropertyResponse {
   available: boolean
   provider?: {
@@ -94,6 +125,7 @@ export default function PropertiesPage() {
   const [mode, setMode] = useState<'name' | 'address'>('address')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<PropertyResponse | null>(null)
+  const [attomResult, setAttomResult] = useState<AttomResponse | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -109,16 +141,36 @@ export default function PropertiesPage() {
 
     setLoading(true)
     setResult(null)
+    setAttomResult(null)
     try {
-      const response = await fetch('/api/properties/nyc-acris', {
+      const acrisPromise = fetch('/api/properties/nyc-acris', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
         body: JSON.stringify({ q, mode }),
       })
+      const attomPromise = mode === 'address'
+        ? fetch('/api/properties/attom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+            body: JSON.stringify({ q }),
+          })
+        : null
+
+      const response = await acrisPromise
       const data = await response.json()
       setResult(data)
       if (!response.ok) toast.error(data.error || 'NYC ACRIS search failed')
+
+      if (attomPromise) {
+        const attomResponse = await attomPromise
+        const attomData = await attomResponse.json()
+        setAttomResult(attomData)
+        if (!attomResponse.ok && attomResponse.status !== 503) {
+          toast.error(attomData.error || 'Nationwide property search failed')
+        }
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'NYC ACRIS search failed')
     } finally {
@@ -147,7 +199,7 @@ export default function PropertiesPage() {
             Property Records
           </h1>
           <p className="mt-1 text-slate-400">
-            Search official NYC Department of Finance ACRIS recorded-property documents.
+            Search NYC recorded instruments and, when configured, broader U.S. licensed property data by address.
           </p>
         </div>
 
@@ -181,6 +233,84 @@ export default function PropertiesPage() {
             </form>
           </CardContent>
         </Card>
+
+        {mode === 'address' && attomResult && !attomResult.available && (
+          <Card className="border-yellow-500/20 bg-yellow-500/5">
+            <CardContent className="flex items-start gap-3 pt-6 text-sm text-yellow-100/80">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+              <span>{attomResult.coverage?.description || 'Nationwide property integration is not configured in this environment.'}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {mode === 'address' && attomResult?.error && (
+          <Card className="border-red-500/30 bg-red-500/5">
+            <CardContent className="flex items-start gap-3 pt-6 text-red-300">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+              <span>{attomResult.error}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {mode === 'address' && attomResult?.available && !attomResult.error && (
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-blue-200">U.S. property candidates</CardTitle>
+                  <CardDescription className="mt-1 text-slate-400">
+                    {attomResult.data?.resultCount ?? 0} record{(attomResult.data?.resultCount ?? 0) === 1 ? '' : 's'} · {attomResult.evidenceFacts?.length ?? 0} source-backed facts
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="border-blue-500/30 text-blue-300">Current ownership claimed: no</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(attomResult.data?.records || []).length === 0 ? (
+                <div className="py-4 text-center text-sm text-slate-400">No matching nationwide property record returned.</div>
+              ) : (
+                (attomResult.data?.records || []).map((record, index) => (
+                  <div key={record.attomId || index} className="rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-white">{record.address || 'Address unavailable'}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {[record.city, record.state, record.postalCode].filter(Boolean).join(', ')}
+                        </div>
+                      </div>
+                      {record.propertyType && <Badge variant="outline" className="border-slate-600 text-slate-300">{record.propertyType}</Badge>}
+                    </div>
+                    {record.owners.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Recorded owner lead{record.owners.length === 1 ? '' : 's'}</div>
+                        <div className="mt-1 text-sm text-slate-300">{record.owners.join(' · ')}</div>
+                      </div>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+                      {record.yearBuilt && <span>Built {record.yearBuilt}</span>}
+                      {record.beds !== null && <span>{record.beds} beds</span>}
+                      {record.baths !== null && <span>{record.baths} baths</span>}
+                      {record.livingArea !== null && <span>{record.livingArea.toLocaleString()} sq ft</span>}
+                      {record.assessedValue !== null && <span>Assessed ${record.assessedValue.toLocaleString()}</span>}
+                      {record.taxAmount !== null && <span>Tax ${record.taxAmount.toLocaleString()}{record.taxYear ? ` (${record.taxYear})` : ''}</span>}
+                      {record.lastSaleAmount !== null && <span>Last sale ${record.lastSaleAmount.toLocaleString()}</span>}
+                      {record.lastSaleDate && <span>Sale date {record.lastSaleDate}</span>}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 pt-3 text-xs text-slate-500">
+                      <span>Licensed ATTOM property record lead · not proof of current ownership</span>
+                      <a href={record.sourceUrl} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300">
+                        Source
+                      </a>
+                    </div>
+                  </div>
+                ))
+              )}
+              <p className="text-xs leading-5 text-slate-500">
+                {attomResult.data?.limitation || 'Property records are evidence leads and may be incomplete, delayed, or require independent verification.'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {result?.error && (
           <Card className="border-red-500/30 bg-red-500/5">
