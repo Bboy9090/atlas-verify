@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { isSubjectSuppressed, loadApprovedSuppressionHashes } from '@/lib/subject-suppression'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -19,6 +20,10 @@ export async function GET() {
         select: {
           id: true,
           fullName: true,
+          phoneE164: true,
+          email: true,
+          address: true,
+          username: true,
           caseId: true,
           case: {
             select: {
@@ -36,8 +41,17 @@ export async function GET() {
     },
   })
 
+  const approvedSuppressionHashes = await loadApprovedSuppressionHashes(
+    monitors.map(monitor => monitor.subject)
+  )
+  const visibleMonitors = monitors.filter(
+    monitor => !isSubjectSuppressed(monitor.subject, approvedSuppressionHashes)
+  )
+  const suppressedMonitorCount = monitors.length - visibleMonitors.length
+
   return NextResponse.json({
-    monitors,
+    monitors: visibleMonitors,
+    suppressedMonitorCount,
     automaticProviderMonitoring: false,
     description:
       'Monitoring compares checkpoints of evidence already stored in AtlasVerify. It does not run providers in the background.',
