@@ -24,6 +24,18 @@ interface SafetyRecallRecord {
   overTheAirUpdate: boolean | null
 }
 
+interface SafetyComplaintRecord {
+  odiNumber: string | null
+  manufacturer: string | null
+  components: string | null
+  summary: string | null
+  dateOfIncident: string | null
+  crash: boolean | null
+  fire: boolean | null
+  injuries: number | null
+  deaths: number | null
+}
+
 interface VinResponse {
   available: boolean
   provider?: {
@@ -45,6 +57,15 @@ interface VinResponse {
     scope: 'year_make_model'
     vinSpecificOpenRecall: false
     officialVinRecallUrl: string
+  }
+  safetyComplaints?: {
+    available: boolean
+    records: SafetyComplaintRecord[]
+    sourceUrl: string | null
+    error: string | null
+    scope: 'year_make_model'
+    verifiedDefects: false
+    vinSpecific: false
   }
   evidenceFacts?: Array<{
     field: string
@@ -322,81 +343,69 @@ export default function VehiclePage() {
               </Card>
             )}
 
-            {result?.safetyRecalls && (
-              <Card className="border-orange-500/20 bg-orange-500/5">
+                        {result?.safetyComplaints && (
+              <Card className="border-purple-500/20 bg-purple-500/5">
                 <CardHeader>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <CardTitle className="text-orange-200">NHTSA safety recalls</CardTitle>
+                      <CardTitle className="text-purple-200">NHTSA consumer complaints</CardTitle>
                       <CardDescription className="mt-1 text-slate-400">
-                        General recall records for the decoded model year, make, and model. These records do not establish recall status for this specific VIN.
+                        Reports submitted about this year/make/model. Complaints are allegations, not verified defect findings, and are not specific to this VIN.
                       </CardDescription>
                     </div>
-                    <Badge variant="outline" className="border-orange-500/30 text-orange-300">
-                      {result.safetyRecalls.available
-                        ? `${result.safetyRecalls.records.length} record${result.safetyRecalls.records.length === 1 ? '' : 's'}`
+                    <Badge variant="outline" className="border-purple-500/30 text-purple-300">
+                      {result.safetyComplaints.available
+                        ? `${result.safetyComplaints.records.length} report${result.safetyComplaints.records.length === 1 ? '' : 's'}`
                         : 'Source unavailable'}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {result.safetyRecalls.error && (
+                  {result.safetyComplaints.error && (
                     <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100/80">
-                      VIN decode succeeded, but the model recall lookup did not: {result.safetyRecalls.error}
+                      Vehicle decode succeeded, but complaint lookup did not: {result.safetyComplaints.error}
                     </div>
                   )}
-                  {result.safetyRecalls.available && result.safetyRecalls.records.length === 0 && (
+                  {result.safetyComplaints.available && result.safetyComplaints.records.length === 0 && (
                     <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-sm text-slate-300">
-                      NHTSA returned no general recall records for this decoded year/make/model combination.
+                      NHTSA returned no consumer complaint records for this decoded year/make/model combination.
                     </div>
                   )}
-                  {result.safetyRecalls.records.slice(0, 25).map((recall, index) => (
+                  {result.safetyComplaints.records.slice(0, 20).map((complaint, index) => (
                     <div
-                      key={recall.campaignNumber || index}
+                      key={complaint.odiNumber || index}
                       className="rounded-lg border border-slate-700 bg-slate-900/60 p-4"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <div className="font-medium text-slate-100">
-                            {recall.component || 'Safety recall'}
+                            {complaint.components || 'Consumer vehicle complaint'}
                           </div>
                           <div className="mt-1 text-xs text-slate-500">
-                            {recall.campaignNumber ? `Campaign ${recall.campaignNumber}` : 'Campaign number unavailable'}
-                            {recall.reportReceivedDate ? ` • Received ${recall.reportReceivedDate}` : ''}
+                            {complaint.odiNumber ? `ODI ${complaint.odiNumber}` : 'ODI number unavailable'}
+                            {complaint.dateOfIncident ? ` • Incident ${complaint.dateOfIncident}` : ''}
                           </div>
                         </div>
-                        {(recall.parkIt || recall.parkOutside) && (
+                        {(complaint.crash || complaint.fire || (complaint.injuries ?? 0) > 0 || (complaint.deaths ?? 0) > 0) && (
                           <Badge variant="outline" className="border-red-500/40 text-red-300">
-                            Urgent manufacturer safety instruction
+                            Report includes serious-event metadata
                           </Badge>
                         )}
                       </div>
-                      {recall.summary && <p className="mt-3 text-sm text-slate-300">{recall.summary}</p>}
-                      {recall.consequence && (
-                        <div className="mt-3 text-xs text-slate-400">
-                          <span className="font-medium text-slate-300">Consequence:</span> {recall.consequence}
-                        </div>
-                      )}
-                      {recall.remedy && (
-                        <div className="mt-2 text-xs text-slate-400">
-                          <span className="font-medium text-slate-300">Remedy:</span> {recall.remedy}
-                        </div>
-                      )}
+                      {complaint.summary && <p className="mt-3 text-sm text-slate-300">{complaint.summary}</p>}
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                        {complaint.crash !== null && <span>Crash reported: {complaint.crash ? 'yes' : 'no'}</span>}
+                        {complaint.fire !== null && <span>Fire reported: {complaint.fire ? 'yes' : 'no'}</span>}
+                        {complaint.injuries !== null && <span>Injuries reported: {complaint.injuries}</span>}
+                        {complaint.deaths !== null && <span>Deaths reported: {complaint.deaths}</span>}
+                      </div>
                     </div>
                   ))}
-                  {result.safetyRecalls.records.length > 25 && (
+                  {result.safetyComplaints.records.length > 20 && (
                     <div className="text-xs text-slate-500">
-                      Showing the first 25 of {result.safetyRecalls.records.length} general recall records.
+                      Showing the first 20 of {result.safetyComplaints.records.length} complaint records.
                     </div>
                   )}
-                  <a
-                    href={result.safetyRecalls.officialVinRecallUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex text-sm font-medium text-blue-400 hover:text-blue-300"
-                  >
-                    Check this VIN on the official NHTSA recall site
-                  </a>
                 </CardContent>
               </Card>
             )}
