@@ -7,6 +7,7 @@ import { buildEvidenceTimeline, buildRelationshipGraph } from '@/lib/evidence-vi
 import { resolveEntityEvidence } from '@/lib/entity-resolution'
 import { buildEvidenceFreshnessLedger } from '@/lib/evidence-freshness'
 import { rankDuplicateSubjects } from '@/lib/subject-duplicate-review'
+import { applyResolvedEvidenceCorrections } from '@/lib/evidence-corrections'
 
 interface RouteParams {
   params: Promise<{ id: string; subjectId: string }>
@@ -38,6 +39,20 @@ export async function GET(_request: Request, { params }: RouteParams) {
       enrichmentResults: {
         include: {
           evidenceFacts: {
+            include: {
+              disputes: {
+                where: { userId, status: 'resolved' },
+                orderBy: { resolvedAt: 'desc' },
+                select: {
+                  id: true,
+                  status: true,
+                  requestedValue: true,
+                  resolutionNote: true,
+                  resolvedAt: true,
+                  updatedAt: true,
+                },
+              },
+            },
             orderBy: { retrievedAt: 'desc' },
           },
         },
@@ -50,7 +65,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: 'Subject not found' }, { status: 404 })
   }
 
-  const facts = subject.enrichmentResults.flatMap(result =>
+  const rawFacts = subject.enrichmentResults.flatMap(result =>
     result.evidenceFacts.map(fact => ({
       id: fact.id,
       field: fact.field,
@@ -67,8 +82,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
       confidenceScore: fact.confidenceScore,
       corroborationCount: fact.corroborationCount,
       conflictCount: fact.conflictCount,
+      disputes: fact.disputes,
     }))
   )
+  const correctedPrimary = applyResolvedEvidenceCorrections(rawFacts)
+  const facts = correctedPrimary.facts
 
   const profile = buildProfileIntelligence(facts)
   const timeline = buildEvidenceTimeline(facts)
@@ -84,7 +102,24 @@ export async function GET(_request: Request, { params }: RouteParams) {
     },
     include: {
       enrichmentResults: {
-        include: { evidenceFacts: true },
+        include: {
+          evidenceFacts: {
+            include: {
+              disputes: {
+                where: { userId, status: 'resolved' },
+                orderBy: { resolvedAt: 'desc' },
+                select: {
+                  id: true,
+                  status: true,
+                  requestedValue: true,
+                  resolutionNote: true,
+                  resolvedAt: true,
+                  updatedAt: true,
+                },
+              },
+            },
+          },
+        },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -103,16 +138,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
       state: subject.state,
       facts,
     },
-    siblingSubjects.map(candidate => ({
-      id: candidate.id,
-      fullName: candidate.fullName,
-      phoneE164: candidate.phoneE164,
-      email: candidate.email,
-      username: candidate.username,
-      address: candidate.address,
-      city: candidate.city,
-      state: candidate.state,
-      facts: candidate.enrichmentResults.flatMap(result =>
+    siblingSubjects.map(candidate => {
+      const candidateRawFacts = candidate.enrichmentResults.flatMap(result =>
         result.evidenceFacts.map(fact => ({
           id: fact.id,
           field: fact.field,
@@ -129,9 +156,23 @@ export async function GET(_request: Request, { params }: RouteParams) {
           confidenceScore: fact.confidenceScore,
           corroborationCount: fact.corroborationCount,
           conflictCount: fact.conflictCount,
+          disputes: fact.disputes,
         }))
-      ),
-    }))
+      )
+      const candidateFacts = applyResolvedEvidenceCorrections(candidateRawFacts).facts
+
+      return {
+        id: candidate.id,
+        fullName: candidate.fullName,
+        phoneE164: candidate.phoneE164,
+        email: candidate.email,
+        username: candidate.username,
+        address: candidate.address,
+        city: candidate.city,
+        state: candidate.state,
+        facts: candidateFacts,
+      }
+    })
   ).slice(0, 10)
 
   return NextResponse.json({
@@ -159,5 +200,6 @@ export async function GET(_request: Request, { params }: RouteParams) {
       description: 'Possible duplicates are review leads only. AtlasVerify never merges subjects automatically.',
     },
     evidenceFactCount: facts.length,
+    appliedCorrectionCount: correctedPrimary.corrections.length,
   })
 }
