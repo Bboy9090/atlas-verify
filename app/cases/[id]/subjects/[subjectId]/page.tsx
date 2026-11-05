@@ -123,6 +123,17 @@ interface FreshnessLedger {
   items: FreshnessItem[]
 }
 
+interface DuplicateSubjectReview {
+  subjectId: string
+  fullName: string
+  score: number
+  strength: 'none' | 'weak' | 'moderate' | 'strong'
+  overlaps: Array<{ field: string; value: string; sources: string[] }>
+  conflicts: Array<{ field: string; left: string; right: string }>
+  mergeRecommended: false
+  identityConfirmed: false
+}
+
 interface ProfileResponse {
   subject: {
     id: string
@@ -158,6 +169,12 @@ interface ProfileResponse {
   }
   resolution: EntityResolutionSummary
   freshness: FreshnessLedger
+  duplicateReview: DuplicateSubjectReview[]
+  duplicateReviewPolicy: {
+    autoMerge: false
+    identityConfirmed: false
+    description: string
+  }
   evidenceFactCount: number
 }
 
@@ -367,6 +384,66 @@ export default function SubjectProfilePage({
               <div className="flex items-center gap-2 md:col-span-2">
                 <MapPin className="h-4 w-4 text-slate-500" />
                 {[subject.address, subject.city, subject.state].filter(Boolean).join(', ')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-700 bg-slate-800/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Users className="h-5 w-5 text-violet-400" />
+              Possible duplicate subjects
+            </CardTitle>
+            <CardDescription className="text-slate-400">
+              {data.duplicateReviewPolicy.description}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {data.duplicateReview.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-700 p-5 text-sm text-slate-500">
+                No bounded phone, email, address, or username overlap was found with other subjects in this case.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {data.duplicateReview.map(review => (
+                  <div key={review.subjectId} className="rounded-lg border border-slate-700 bg-slate-900/70 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-white">{review.fullName}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {Math.round(review.score * 100)}% bounded identifier similarity · {review.strength}
+                        </div>
+                      </div>
+                      <Link href={`/cases/${data.case.id}/subjects/${review.subjectId}`}>
+                        <Button size="sm" variant="outline" className="border-slate-600 text-slate-300">
+                          Review profile
+                        </Button>
+                      </Link>
+                    </div>
+                    {review.overlaps.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {review.overlaps.map((overlap, index) => (
+                          <div key={`${overlap.field}-${index}`} className="rounded border border-green-500/20 bg-green-500/5 p-2 text-xs text-green-200">
+                            Match · {overlap.field}: {overlap.value} · sources: {overlap.sources.join(', ')}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {review.conflicts.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {review.conflicts.map((conflict, index) => (
+                          <div key={`${conflict.field}-${index}`} className="rounded border border-red-500/20 bg-red-500/5 p-2 text-xs text-red-200">
+                            Conflict · {conflict.field}: {conflict.left} ≠ {conflict.right}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-3 text-[11px] text-slate-500">
+                      Identity confirmed: no · Automatic merge: disabled
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
