@@ -11,6 +11,19 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
+interface SafetyRecallRecord {
+  campaignNumber: string | null
+  manufacturer: string | null
+  component: string | null
+  summary: string | null
+  consequence: string | null
+  remedy: string | null
+  reportReceivedDate: string | null
+  parkIt: boolean | null
+  parkOutside: boolean | null
+  overTheAirUpdate: boolean | null
+}
+
 interface VinResponse {
   available: boolean
   provider?: {
@@ -24,6 +37,15 @@ interface VinResponse {
     limitation?: string
   }
   confidenceScore?: number
+  safetyRecalls?: {
+    available: boolean
+    records: SafetyRecallRecord[]
+    sourceUrl: string | null
+    error: string | null
+    scope: 'year_make_model'
+    vinSpecificOpenRecall: false
+    officialVinRecallUrl: string
+  }
   evidenceFacts?: Array<{
     field: string
     value: unknown
@@ -216,6 +238,89 @@ export default function VehiclePage() {
                 </div>
               </CardContent>
             </Card>
+
+            {result?.safetyRecalls && (
+              <Card className="border-orange-500/20 bg-orange-500/5">
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-orange-200">NHTSA safety recalls</CardTitle>
+                      <CardDescription className="mt-1 text-slate-400">
+                        General recalls for the decoded model year, make, and model. This does not prove that this VIN has an unrepaired recall.
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline" className="border-orange-500/30 text-orange-300">
+                      {result.safetyRecalls.available
+                        ? `${result.safetyRecalls.records.length} model recall${result.safetyRecalls.records.length === 1 ? '' : 's'}`
+                        : 'Recall source unavailable'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {result.safetyRecalls.error && (
+                    <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100/80">
+                      VIN decode succeeded, but model recall lookup did not: {result.safetyRecalls.error}
+                    </div>
+                  )}
+
+                  {result.safetyRecalls.available && result.safetyRecalls.records.length === 0 && (
+                    <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-sm text-slate-300">
+                      NHTSA returned no general recall records for this decoded year/make/model combination.
+                    </div>
+                  )}
+
+                  {result.safetyRecalls.records.slice(0, 25).map((recall, index) => (
+                    <div
+                      key={recall.campaignNumber || index}
+                      className="rounded-lg border border-slate-700 bg-slate-900/60 p-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <div className="font-medium text-slate-100">
+                            {recall.component || 'Safety recall'}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-500">
+                            {recall.campaignNumber ? `Campaign ${recall.campaignNumber}` : 'Campaign number unavailable'}
+                            {recall.reportReceivedDate ? ` • Received ${recall.reportReceivedDate}` : ''}
+                          </div>
+                        </div>
+                        {(recall.parkIt || recall.parkOutside) && (
+                          <Badge variant="outline" className="border-red-500/40 text-red-300">
+                            {recall.parkIt ? 'Do not drive / park it' : 'Park outside'}
+                          </Badge>
+                        )}
+                      </div>
+                      {recall.summary && <p className="mt-3 text-sm text-slate-300">{recall.summary}</p>}
+                      {recall.consequence && (
+                        <div className="mt-3 text-xs text-slate-400">
+                          <span className="font-medium text-slate-300">Consequence:</span> {recall.consequence}
+                        </div>
+                      )}
+                      {recall.remedy && (
+                        <div className="mt-2 text-xs text-slate-400">
+                          <span className="font-medium text-slate-300">Remedy:</span> {recall.remedy}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {result.safetyRecalls.records.length > 25 && (
+                    <div className="text-xs text-slate-500">
+                      Showing the first 25 of {result.safetyRecalls.records.length} general recall records.
+                    </div>
+                  )}
+
+                  <a
+                    href={result.safetyRecalls.officialVinRecallUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex text-sm font-medium text-blue-400 hover:text-blue-300"
+                  >
+                    Check this VIN for unrepaired recalls on NHTSA.gov
+                  </a>
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="border-yellow-500/20 bg-yellow-500/5">
               <CardContent className="pt-6 text-sm text-yellow-100/80">
