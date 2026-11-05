@@ -16,6 +16,7 @@ import './nyc-acris-property-provider'
 import './attom-property-provider'
 import './ofac-sanctions-provider'
 import './courtlistener-provider'
+import './courtlistener-bankruptcy-provider'
 
 // Re-export provider utilities
 export { getProvider, getAllProviders, getProvidersByType, registerProvider } from './enrichment-provider'

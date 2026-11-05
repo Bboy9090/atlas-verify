@@ -21,6 +21,9 @@ interface CourtResult {
   suitNature: string | null
   status: string | null
   citation: string[]
+  chapter?: string | null
+  trustee?: string | null
+  dateTerminated?: string | null
   url: string
 }
 
@@ -37,6 +40,7 @@ export default function CourtsPage() {
   const { status } = useSession()
   const router = useRouter()
   const [query, setQuery] = useState('')
+  const [mode, setMode] = useState<'general' | 'bankruptcy'>('general')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ResponseBody | null>(null)
 
@@ -52,7 +56,8 @@ export default function CourtsPage() {
     setLoading(true)
     setResult(null)
     try {
-      const response = await fetch('/api/courts/search', {
+      const endpoint = mode === 'bankruptcy' ? '/api/courts/bankruptcy' : '/api/courts/search'
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
@@ -60,7 +65,9 @@ export default function CourtsPage() {
       })
       const data = await response.json()
       setResult(data)
-      if (!response.ok && response.status !== 503) toast.error(data.error || 'Court search failed')
+      if (!response.ok && response.status !== 503) {
+        toast.error(data.error || (mode === 'bankruptcy' ? 'Bankruptcy reference search failed' : 'Court search failed'))
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Court search failed')
     } finally {
@@ -76,23 +83,46 @@ export default function CourtsPage() {
             <Scale className="h-8 w-8 text-blue-400" /> Court Records
           </h1>
           <p className="mt-1 text-slate-400">
-            Search CourtListener/RECAP references. Results are leads only and require independent identity matching.
+            Search CourtListener/RECAP references, including a bankruptcy-only federal docket mode. Results are leads only and require independent identity matching.
           </p>
         </div>
 
         <Card className="border-yellow-500/20 bg-yellow-500/5">
           <CardContent className="flex gap-3 pt-6 text-sm text-yellow-100/80">
             <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
-            A name match is not proof that a person is the same individual in a case, and it does not establish criminal history, guilt, liability, or disposition.
+            {mode === 'bankruptcy'
+              ? 'A bankruptcy name match is not identity proof and does not establish current debt, creditworthiness, financial condition, liability, or eligibility for any decision.'
+              : 'A name match is not proof that a person is the same individual in a case, and it does not establish criminal history, guilt, liability, or disposition.'}
           </CardContent>
         </Card>
 
         <Card className="border-slate-700 bg-slate-800/50">
-          <CardContent className="pt-6">
+          <CardContent className="space-y-4 pt-6">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={mode === 'general' ? 'default' : 'outline'}
+                onClick={() => { setMode('general'); setResult(null) }}
+              >
+                General court references
+              </Button>
+              <Button
+                type="button"
+                variant={mode === 'bankruptcy' ? 'default' : 'outline'}
+                onClick={() => { setMode('bankruptcy'); setResult(null) }}
+              >
+                Bankruptcy only
+              </Button>
+            </div>
             <form onSubmit={search} className="flex flex-col gap-3 md:flex-row">
-              <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Name, company, docket terms, or case keywords" className="bg-slate-900 text-white" />
+              <Input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder={mode === 'bankruptcy' ? 'Debtor name, company, docket, trustee, or bankruptcy terms' : 'Name, company, docket terms, or case keywords'}
+                className="bg-slate-900 text-white"
+              />
               <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-                {loading ? 'Searching...' : 'Search court records'}
+                {loading ? 'Searching...' : mode === 'bankruptcy' ? 'Search bankruptcy references' : 'Search court records'}
               </Button>
             </form>
           </CardContent>
@@ -111,7 +141,7 @@ export default function CourtsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
                 <ShieldCheck className="h-5 w-5 text-green-400" />
-                Public court references
+                {mode === 'bankruptcy' ? 'Federal bankruptcy references' : 'Public court references'}
               </CardTitle>
               <CardDescription className="text-slate-400">
                 Showing up to 20 results from {result.totalResults ?? 0} matching records.
@@ -129,6 +159,13 @@ export default function CourtsPage() {
                         <div className="mt-1 text-sm text-slate-400">
                           {[item.court, item.docketNumber && `Docket ${item.docketNumber}`, item.dateFiled].filter(Boolean).join(' • ')}
                         </div>
+                        {mode === 'bankruptcy' && (item.chapter || item.trustee || item.dateTerminated) && (
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+                            {item.chapter && <Badge variant="outline">Chapter {item.chapter}</Badge>}
+                            {item.trustee && <Badge variant="outline">Trustee: {item.trustee}</Badge>}
+                            {item.dateTerminated && <Badge variant="outline">Terminated {item.dateTerminated}</Badge>}
+                          </div>
+                        )}
                       </div>
                       <Badge variant="outline" className="border-yellow-500/30 text-yellow-300">Verify identity</Badge>
                     </div>

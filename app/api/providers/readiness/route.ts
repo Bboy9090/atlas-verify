@@ -106,6 +106,13 @@ export async function GET() {
       'public_record',
     ),
     item(
+      'courtlistener_bankruptcy',
+      'CourtListener / RECAP Bankruptcy',
+      ['COURTLISTENER_API_TOKEN'],
+      'Federal bankruptcy-only docket references filtered to bankruptcy court jurisdictions.',
+      'public_record',
+    ),
+    item(
       'nhtsa_vpic',
       'NHTSA vPIC',
       [],
