@@ -32,6 +32,22 @@ interface ProviderItem {
   sourcePolicy: ProviderPolicy
 }
 
+interface IntegrationReadiness {
+  id: string
+  label: string
+  status: 'configured' | 'missing_configuration' | 'public_no_key'
+  requiredVariables: string[]
+  missingVariables: string[]
+  coverage: string
+  sourceKind: ProviderPolicy['sourceKind']
+}
+
+interface ReadinessSummary {
+  operational: number
+  total: number
+  missingConfiguration: number
+}
+
 function title(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, match => match.toUpperCase())
 }
@@ -42,6 +58,9 @@ export default function SourcesPage() {
   const [providers, setProviders] = useState<ProviderItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [readiness, setReadiness] = useState<IntegrationReadiness[]>([])
+  const [readinessSummary, setReadinessSummary] = useState<ReadinessSummary | null>(null)
+  const [readinessError, setReadinessError] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -58,6 +77,21 @@ export default function SourcesPage() {
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load providers'))
       .finally(() => setLoading(false))
+  }, [status])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    fetch('/api/providers/readiness', { cache: 'no-store' })
+      .then(async response => {
+        const body = await response.json()
+        if (!response.ok) throw new Error(body.error || 'Failed to load provider readiness')
+        setReadiness(body.integrations || [])
+        setReadinessSummary(body.summary || null)
+      })
+      .catch(err => setReadinessError(
+        err instanceof Error ? err.message : 'Failed to load provider readiness'
+      ))
   }, [status])
 
   const productionProviders = useMemo(
@@ -124,6 +158,76 @@ export default function SourcesPage() {
         {error && (
           <Card className="border-red-500/30 bg-red-500/5">
             <CardContent className="py-4 text-sm text-red-300">{error}</CardContent>
+          </Card>
+        )}
+
+        {readinessError && (
+          <Card className="border-yellow-500/30 bg-yellow-500/5">
+            <CardContent className="py-4 text-sm text-yellow-200">
+              Provider readiness could not be loaded: {readinessError}
+            </CardContent>
+          </Card>
+        )}
+
+        {readinessSummary && (
+          <Card className="border-slate-700 bg-slate-800/50">
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-white">Provider runtime readiness</CardTitle>
+                  <CardDescription className="mt-1 text-slate-400">
+                    Server-side configuration presence only. Credential values are never returned to this page.
+                  </CardDescription>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={readinessSummary.missingConfiguration === 0
+                    ? 'border-green-500/30 text-green-300'
+                    : 'border-yellow-500/30 text-yellow-300'}
+                >
+                  {readinessSummary.operational}/{readinessSummary.total} operational
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {readiness.map(integration => {
+                  const operational = integration.status !== 'missing_configuration'
+                  return (
+                    <div
+                      key={integration.id}
+                      className={`rounded-lg border p-3 ${
+                        operational
+                          ? 'border-green-500/20 bg-green-500/5'
+                          : 'border-yellow-500/20 bg-yellow-500/5'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-medium text-slate-100">{integration.label}</div>
+                        <Badge
+                          variant="outline"
+                          className={operational
+                            ? 'border-green-500/30 text-green-300'
+                            : 'border-yellow-500/30 text-yellow-300'}
+                        >
+                          {integration.status === 'public_no_key'
+                            ? 'Public / no key'
+                            : integration.status === 'configured'
+                              ? 'Configured'
+                              : 'Needs configuration'}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-slate-400">{integration.coverage}</p>
+                      {integration.missingVariables.length > 0 && (
+                        <div className="mt-2 text-xs text-yellow-200">
+                          Missing: {integration.missingVariables.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
           </Card>
         )}
 
