@@ -13,6 +13,15 @@ const resolveRoute = fs.readFileSync(
   'utf8',
 )
 const reportBuilder = fs.readFileSync('lib/case-report.ts', 'utf8')
+const profileRoute = fs.readFileSync(
+  'app/api/cases/[id]/subjects/[subjectId]/profile/route.ts',
+  'utf8',
+)
+const reportPage = fs.readFileSync('app/cases/[id]/report/page.tsx', 'utf8')
+const reviewPage = fs.readFileSync(
+  'app/cases/[id]/subjects/[subjectId]/evidence-review/page.tsx',
+  'utf8',
+)
 
 test('resolved correction overlay requires an accepted requested value', () => {
   assert.match(helper, /dispute\.status === 'resolved'/)
@@ -42,4 +51,25 @@ test('resolving a challenge never overwrites the source evidence fact', () => {
   assert.match(resolveRoute, /prisma\.evidenceDispute\.update/)
   assert.doesNotMatch(resolveRoute, /prisma\.evidenceFact\.update/)
   assert.doesNotMatch(resolveRoute, /prisma\.evidenceFact\.delete/)
+})
+
+
+test('subject profile intelligence uses the same accepted correction overlay', () => {
+  assert.match(profileRoute, /applyResolvedEvidenceCorrections\(rawFacts\)/)
+  assert.match(profileRoute, /const facts = correctedPrimary\.facts/)
+  assert.match(profileRoute, /applyResolvedEvidenceCorrections\(candidateRawFacts\)\.facts/)
+  assert.match(profileRoute, /appliedCorrectionCount: correctedPrimary\.corrections\.length/)
+})
+
+test('human-readable reports disclose every accepted correction bound into the receipt', () => {
+  assert.match(reportPage, /Accepted correction ledger/)
+  assert.match(reportPage, /Original source value:/)
+  assert.match(reportPage, /Effective corrected value:/)
+  assert.match(reportPage, /Applied corrections/)
+})
+
+test('evidence review explains that resolved requested values affect only derived views', () => {
+  assert.match(reviewPage, /becomes the effective value in derived Atlas profiles and reports/)
+  assert.match(reviewPage, /Resolve & apply correction/)
+  assert.match(reviewPage, /underlying evidence fact remains unchanged/)
 })
