@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'lib/case-report.ts'
+      - 'lib/evidence-corrections.ts'
+      - 'tests/evidence-correction-contract.test.mjs'
       - 'components/pwa-register.tsx'
       - 'public/**'
       - '.github/workflows/pwa-store-readiness.yml'
@@ -13,6 +16,9 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'lib/case-report.ts'
+      - 'lib/evidence-corrections.ts'
+      - 'tests/evidence-correction-contract.test.mjs'
       - 'components/pwa-register.tsx'
       - 'public/**'
       - '.github/workflows/pwa-store-readiness.yml'
@@ -33,6 +39,8 @@ jobs:
       - run: npm run build
       - name: Verify Sources & Coverage label formatting
         run: node --test tests/sources-label-format.test.mjs
+      - name: Verify immutable evidence correction overlay
+        run: node --test tests/evidence-correction-contract.test.mjs
       - name: Verify public PWA contract
         run: |
           node -e "const m=require('./public/manifest.json'); if(m.display!=='standalone'||!m.start_url||!m.icons?.length) process.exit(1)"
