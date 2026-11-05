@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { createAuditLog } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getProvider } from '@/providers'
+import { lookupNhtsaModelRecalls } from '@/lib/nhtsa-recalls'
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -51,6 +52,48 @@ export async function POST(request: NextRequest) {
 
   const payload = await provider.lookup(vin)
 
+  let safetyRecalls: {
+    available: boolean
+    records: Awaited<ReturnType<typeof lookupNhtsaModelRecalls>>['records']
+    sourceUrl: string | null
+    error: string | null
+    scope: 'year_make_model'
+    vinSpecificOpenRecall: false
+    officialVinRecallUrl: string
+  } = {
+    available: false,
+    records: [],
+    sourceUrl: null,
+    error: null,
+    scope: 'year_make_model',
+    vinSpecificOpenRecall: false,
+    officialVinRecallUrl: `https://www.nhtsa.gov/recalls?vin=${encodeURIComponent(vin)}`,
+  }
+
+  if (payload.success) {
+    const vehicle = (payload.data as { vehicle?: Record<string, unknown> }).vehicle
+    const make = typeof vehicle?.make === 'string' ? vehicle.make.trim() : ''
+    const model = typeof vehicle?.model === 'string' ? vehicle.model.trim() : ''
+    const modelYear = typeof vehicle?.modelYear === 'string' ? vehicle.modelYear.trim() : ''
+
+    if (make && model && /^\d{4}$/.test(modelYear)) {
+      try {
+        const recallResult = await lookupNhtsaModelRecalls(make, model, modelYear)
+        safetyRecalls = {
+          ...safetyRecalls,
+          available: true,
+          records: recallResult.records,
+          sourceUrl: recallResult.sourceUrl,
+        }
+      } catch (error) {
+        safetyRecalls = {
+          ...safetyRecalls,
+          error: error instanceof Error ? error.message : 'NHTSA recall lookup failed.',
+        }
+      }
+    }
+  }
+
   await createAuditLog(userId, 'RUN_SEARCH', {
     queryType: 'vin',
     queryLength: vin.length,
@@ -60,6 +103,8 @@ export async function POST(request: NextRequest) {
     success: payload.success,
     persisted: false,
     historyReport: false,
+    recallLookupAttempted: payload.success,
+    recallRecordsReturned: safetyRecalls.records.length,
   })
 
   if (!payload.success) {
@@ -94,11 +139,12 @@ export async function POST(request: NextRequest) {
       data: payload.data,
       confidenceScore: payload.confidenceScore,
       evidenceFacts: payload.evidenceFacts ?? [],
+      safetyRecalls,
       policy: {
         mayPersist: provider.sourcePolicy.mayPersist,
         historyReport: false,
         description:
-          'Official manufacturer-reported VIN decoding. This is not a title, ownership, accident, lien, registration, or vehicle-history report.',
+          'Official manufacturer-reported VIN decoding plus general NHTSA year/make/model recall information when available. Recall matches are not proof that this VIN has an unrepaired recall. This is not a title, ownership, accident, lien, registration, or vehicle-history report.',
       },
     },
     {
