@@ -19,6 +19,7 @@ model User {
   evidenceDisputes EvidenceDispute[]
   reviewedSuppressionRequests SuppressionRequest[] @relation("SuppressionReviewer")
   subjectMonitors SubjectMonitor[]
+  caseShares    CaseShare[]
 }
 
 model Case {
@@ -29,6 +30,7 @@ model Case {
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjects    Subject[]
+  shares      CaseShare[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -200,4 +202,21 @@ model AuditLog {
   @@index([userId])
   @@index([subjectId])
   @@index([action])
+}
+
+
+model CaseShare {
+  id          String   @id @default(uuid())
+  caseId      String
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([caseId])
+  @@index([ownerId])
+  @@index([expiresAt])
 }
