@@ -66,6 +66,16 @@ interface ReportSubject {
     associates: ReportItem[]
     businesses: ReportItem[]
   }
+  evidenceCorrections: Array<{
+    evidenceFactId: string
+    disputeId: string
+    field: string
+    sourceName: string
+    originalValue: unknown
+    effectiveValue: unknown
+    resolutionNote: string | null
+    resolvedAt: string | null
+  }>
   timeline: Array<{
     id: string
     timestamp: string
@@ -97,6 +107,7 @@ interface CaseReport {
     staleFactCount: number
     conflictedFieldCount: number
     corroboratedFieldCount: number
+    appliedCorrectionCount: number
   }
   subjects: ReportSubject[]
   sourceRegister: Array<{
@@ -304,6 +315,7 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
               ['Corroborated fields', report.summary.corroboratedFieldCount],
               ['Conflicted fields', report.summary.conflictedFieldCount],
               ['Stale facts', report.summary.staleFactCount],
+              ['Applied corrections', report.summary.appliedCorrectionCount],
             ].map(([label, value]) => (
               <div key={String(label)} className="rounded-lg border border-slate-700 p-3 print:border-slate-300">
                 <div className="text-xl font-bold text-white print:text-black">{value}</div>
@@ -340,6 +352,41 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
               <EvidenceList title="Relatives" items={subject.profile.relatives} />
               <EvidenceList title="Associates" items={subject.profile.associates} />
               <EvidenceList title="Businesses" items={subject.profile.businesses} />
+
+              {subject.evidenceCorrections.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400 print:text-slate-700">
+                    Accepted correction ledger
+                  </h4>
+                  <div className="space-y-2">
+                    {subject.evidenceCorrections.map(correction => (
+                      <div
+                        key={correction.disputeId}
+                        className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 print:border-slate-300 print:bg-white"
+                      >
+                        <div className="text-xs font-medium uppercase tracking-wide text-emerald-300 print:text-black">
+                          {correction.field} • {correction.sourceName}
+                        </div>
+                        <div className="mt-2 grid gap-2 text-sm md:grid-cols-2">
+                          <div>
+                            <span className="text-slate-500">Original source value:</span>{' '}
+                            <span className="text-slate-300 print:text-black">{display(correction.originalValue)}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Effective corrected value:</span>{' '}
+                            <span className="font-medium text-emerald-200 print:text-black">{display(correction.effectiveValue)}</span>
+                          </div>
+                        </div>
+                        {correction.resolutionNote && (
+                          <div className="mt-2 text-xs text-slate-400 print:text-slate-700">
+                            Resolution: {correction.resolutionNote}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {subject.timeline.length > 0 && (
                 <div>
