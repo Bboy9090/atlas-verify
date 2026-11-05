@@ -43,6 +43,48 @@ interface EntityResult {
   sourceUrl: string
 }
 
+interface OpenCorporatesEntity {
+  name: string | null
+  companyNumber: string | null
+  jurisdictionCode: string | null
+  currentStatus: string | null
+  incorporationDate: string | null
+  dissolutionDate: string | null
+  companyType: string | null
+  branchStatus: string | null
+  inactive: boolean
+  registeredAddress: string | null
+  registryUrl: string | null
+  sourceUrl: string | null
+  sourcePublisher: string | null
+  sourceRetrievedAt: string | null
+  previousNames: Array<{ name: string | null; startDate: string | null; endDate: string | null }>
+}
+
+interface OpenCorporatesResponse {
+  available: boolean
+  provider?: {
+    name: string
+    sourceKind: string
+    licenseName: string | null
+    termsUrl: string | null
+  }
+  data?: {
+    entities: OpenCorporatesEntity[]
+    resultCount: number
+    reportedTotalCount: number | null
+    limitation: string
+  }
+  evidenceFacts?: Array<{ field: string; value: unknown; sourceName: string }>
+  coverage?: { provider: string; description: string }
+  policy?: {
+    broadRegistryCoverage: boolean
+    identityProof: boolean
+    description?: string
+  }
+  error?: string
+}
+
 interface BusinessResponse {
   available: boolean
   provider?: {
@@ -84,6 +126,7 @@ export default function BusinessesPage() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BusinessResponse | null>(null)
+  const [openCorporatesResult, setOpenCorporatesResult] = useState<OpenCorporatesResponse | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -99,17 +142,30 @@ export default function BusinessesPage() {
 
     setLoading(true)
     setResult(null)
+    setOpenCorporatesResult(null)
     try {
-      const response = await fetch('/api/businesses/sec', {
+      const [secResponse, ocResponse] = await Promise.all([
+        fetch('/api/businesses/sec', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ q }),
-      })
-      const data = await response.json()
-      setResult(data)
-      if (!response.ok && response.status !== 503) {
-        toast.error(data.error || 'SEC EDGAR search failed')
+          body: JSON.stringify({ q }),
+        }),
+        fetch('/api/businesses/opencorporates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ q }),
+        }),
+      ])
+      const [secData, ocData] = await Promise.all([secResponse.json(), ocResponse.json()])
+      setResult(secData)
+      setOpenCorporatesResult(ocData)
+      if (!secResponse.ok && secResponse.status !== 503) {
+        toast.error(secData.error || 'SEC EDGAR search failed')
+      }
+      if (!ocResponse.ok && ocResponse.status !== 503) {
+        toast.error(ocData.error || 'OpenCorporates search failed')
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'SEC EDGAR search failed')
@@ -139,7 +195,7 @@ export default function BusinessesPage() {
             Businesses
           </h1>
           <p className="mt-1 text-slate-400">
-            Search official SEC EDGAR filer records by company name, ticker, or CIK.
+            Search SEC filer records and broader company-registry candidates with source-level provenance.
           </p>
         </div>
 
@@ -164,6 +220,86 @@ export default function BusinessesPage() {
             </form>
           </CardContent>
         </Card>
+
+        {openCorporatesResult && !openCorporatesResult.available && (
+          <Card className="border-yellow-500/20 bg-yellow-500/5">
+            <CardContent className="flex items-start gap-3 pt-6 text-sm text-yellow-100/80">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+              <span>{openCorporatesResult.coverage?.description || 'OpenCorporates integration is not configured in this environment.'}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {openCorporatesResult?.error && (
+          <Card className="border-red-500/30 bg-red-500/5">
+            <CardContent className="flex items-start gap-3 pt-6 text-red-300">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+              <span>{openCorporatesResult.error}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {openCorporatesResult?.available && !openCorporatesResult.error && (
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-blue-200">OpenCorporates registry candidates</CardTitle>
+                  <CardDescription className="mt-1 text-slate-400">
+                    {openCorporatesResult.data?.resultCount ?? 0} returned
+                    {openCorporatesResult.data?.reportedTotalCount !== null && openCorporatesResult.data?.reportedTotalCount !== undefined
+                      ? ` · ${openCorporatesResult.data.reportedTotalCount} reported matches`
+                      : ''}
+                    {' · '}{openCorporatesResult.evidenceFacts?.length ?? 0} source-backed facts
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="border-blue-500/30 text-blue-300">Identity proof: no</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(openCorporatesResult.data?.entities || []).length === 0 ? (
+                <div className="py-4 text-center text-sm text-slate-400">No matching company record returned.</div>
+              ) : (
+                (openCorporatesResult.data?.entities || []).map((entity, index) => (
+                  <div key={`${entity.jurisdictionCode || 'unknown'}:${entity.companyNumber || index}`} className="rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-white">{entity.name || 'Unnamed company'}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {[entity.jurisdictionCode, entity.companyNumber, entity.currentStatus].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                      {entity.companyType && <Badge variant="outline" className="border-slate-600 text-slate-300">{entity.companyType}</Badge>}
+                    </div>
+                    {entity.registeredAddress && (
+                      <div className="mt-3 flex items-start gap-2 text-sm text-slate-300">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                        <span>{entity.registeredAddress}</span>
+                      </div>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                      {entity.incorporationDate && <span>Incorporated {entity.incorporationDate}</span>}
+                      {entity.dissolutionDate && <span>Dissolved {entity.dissolutionDate}</span>}
+                      {entity.sourcePublisher && <span>Source: {entity.sourcePublisher}</span>}
+                    </div>
+                    {entity.previousNames.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {entity.previousNames.slice(0, 6).map((previous, previousIndex) => (
+                          <Badge key={previousIndex} variant="outline" className="border-slate-600 text-slate-400">
+                            Former: {previous.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100/80">
+                {openCorporatesResult.policy?.description || openCorporatesResult.data?.limitation}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {result && !result.available && (
           <Card className="border-yellow-500/20 bg-yellow-500/5">
