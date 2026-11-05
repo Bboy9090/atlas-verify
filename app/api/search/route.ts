@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { createAuditLog } from '@/lib/audit'
 import { detectSearchKind, scoreSubjectMatch, type SearchKind } from '@/lib/search'
-import { hashSuppressionIdentifier, type SuppressionIdentifierType } from '@/lib/suppression'
+import { isSubjectSuppressed, loadApprovedSuppressionHashes } from '@/lib/subject-suppression'
 
 const VALID_KINDS = new Set<SearchKind>(['auto', 'name', 'phone', 'email', 'address', 'username'])
 
@@ -71,46 +71,10 @@ export async function GET(request: NextRequest) {
     take: 250,
   })
 
-  const subjectHashes = subjects.flatMap(subject => {
-    const identifiers: Array<[SuppressionIdentifierType, string | null]> = [
-      ['name', subject.fullName],
-      ['phone', subject.phoneE164],
-      ['email', subject.email],
-      ['address', subject.address],
-      ['username', subject.username],
-    ]
-
-    return identifiers
-      .filter((entry): entry is [SuppressionIdentifierType, string] => Boolean(entry[1]?.trim()))
-      .map(([type, value]) => hashSuppressionIdentifier(type, value))
-  })
-
-  const approvedSuppressions = subjectHashes.length
-    ? await prisma.suppressionRequest.findMany({
-        where: {
-          status: 'approved',
-          identifierHash: { in: Array.from(new Set(subjectHashes)) },
-        },
-        select: { identifierHash: true },
-      })
-    : []
-
-  const suppressedHashes = new Set(approvedSuppressions.map(record => record.identifierHash))
-  const isSuppressedSubject = (subject: typeof subjects[number]) => {
-    const identifiers: Array<[SuppressionIdentifierType, string | null]> = [
-      ['name', subject.fullName],
-      ['phone', subject.phoneE164],
-      ['email', subject.email],
-      ['address', subject.address],
-      ['username', subject.username],
-    ]
-
-    return identifiers.some(([type, value]) =>
-      Boolean(value?.trim()) && suppressedHashes.has(hashSuppressionIdentifier(type, value!))
-    )
-  }
-
-  const visibleSubjects = subjects.filter(subject => !isSuppressedSubject(subject))
+  const approvedSuppressionHashes = await loadApprovedSuppressionHashes(subjects)
+  const visibleSubjects = subjects.filter(
+    subject => !isSubjectSuppressed(subject, approvedSuppressionHashes)
+  )
   const suppressedSubjectCount = subjects.length - visibleSubjects.length
 
   const candidates = visibleSubjects
