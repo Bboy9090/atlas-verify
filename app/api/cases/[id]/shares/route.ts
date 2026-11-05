@@ -66,7 +66,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   return NextResponse.json({
     share,
     token,
-    path: `/api/share/case/${token}`,
+    path: `/share/case/${token}`,
     warning: 'The token is returned once. Store or send it only to intended recipients.',
   }, {
     status: 201,
