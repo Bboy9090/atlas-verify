@@ -116,19 +116,18 @@ export default function SharedCasePage({ params }: { params: Promise<{ token: st
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {[
-                ['Aliases', subject.profile.aliases],
-                ['Phones', subject.profile.phones],
-                ['Emails', subject.profile.emails],
-                ['Addresses', subject.profile.addresses],
-                ['Businesses', subject.profile.businesses],
-              ].map(([label, items]) => {
-                const values = items as Array<{ value: unknown }>
-                if (!values.length) return null
+                { label: 'Aliases', items: subject.profile.aliases },
+                { label: 'Phones', items: subject.profile.phones },
+                { label: 'Emails', items: subject.profile.emails },
+                { label: 'Addresses', items: subject.profile.addresses },
+                { label: 'Businesses', items: subject.profile.businesses },
+              ].map(({ label, items }) => {
+                if (!items.length) return null
                 return (
-                  <div key={String(label)} className="rounded-lg border border-slate-800 p-3">
+                  <div key={label} className="rounded-lg border border-slate-800 p-3">
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
                     <div className="mt-2 space-y-1 text-sm text-slate-300">
-                      {values.slice(0, 10).map((item, index) => <div key={index}>{valueText(item.value)}</div>)}
+                      {items.slice(0, 10).map((item, index) => <div key={index}>{valueText(item.value)}</div>)}
                     </div>
                   </div>
                 )
