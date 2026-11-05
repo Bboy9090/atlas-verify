@@ -6,6 +6,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { createAuditLog } from '@/lib/audit'
 import { buildCaseReport } from '@/lib/case-report'
 import { isSubjectSuppressed, loadApprovedSuppressionHashes } from '@/lib/subject-suppression'
+import { applyResolvedEvidenceCorrections } from '@/lib/evidence-corrections'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -36,6 +37,20 @@ export async function GET(_request: Request, { params }: RouteParams) {
           enrichmentResults: {
             include: {
               evidenceFacts: {
+                include: {
+                  disputes: {
+                    where: { userId, status: 'resolved' },
+                    orderBy: { resolvedAt: 'desc' },
+                    select: {
+                      id: true,
+                      status: true,
+                      requestedValue: true,
+                      resolutionNote: true,
+                      resolvedAt: true,
+                      updatedAt: true,
+                    },
+                  },
+                },
                 orderBy: { retrievedAt: 'desc' },
               },
             },
@@ -62,18 +77,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
     status: caseData.status,
     createdAt: caseData.createdAt,
     updatedAt: caseData.updatedAt,
-    subjects: visibleSubjects.map(subject => ({
-      id: subject.id,
-      fullName: subject.fullName,
-      phoneE164: subject.phoneE164,
-      email: subject.email,
-      username: subject.username,
-      address: subject.address,
-      city: subject.city,
-      state: subject.state,
-      notes: subject.notes,
-      createdAt: subject.createdAt,
-      evidenceFacts: subject.enrichmentResults.flatMap(result =>
+    subjects: visibleSubjects.map(subject => {
+      const rawFacts = subject.enrichmentResults.flatMap(result =>
         result.evidenceFacts.map(fact => ({
           id: fact.id,
           field: fact.field,
@@ -90,9 +95,26 @@ export async function GET(_request: Request, { params }: RouteParams) {
           confidenceScore: fact.confidenceScore,
           corroborationCount: fact.corroborationCount,
           conflictCount: fact.conflictCount,
+          disputes: fact.disputes,
         }))
-      ),
-    })),
+      )
+      const corrected = applyResolvedEvidenceCorrections(rawFacts)
+
+      return {
+        id: subject.id,
+        fullName: subject.fullName,
+        phoneE164: subject.phoneE164,
+        email: subject.email,
+        username: subject.username,
+        address: subject.address,
+        city: subject.city,
+        state: subject.state,
+        notes: subject.notes,
+        createdAt: subject.createdAt,
+        evidenceFacts: corrected.facts,
+        evidenceCorrections: corrected.corrections,
+      }
+    }),
   })
 
   await createAuditLog(userId, 'EXPORT_CASE_REPORT', {
