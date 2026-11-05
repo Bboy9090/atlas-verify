@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { caseReportToCsv } from '@/lib/case-report-csv'
 
 interface ReportItem {
   field: string
@@ -204,6 +205,17 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
     URL.revokeObjectURL(url)
   }
 
+  const downloadCsv = () => {
+    if (!report) return
+    const blob = new Blob([caseReportToCsv(report)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `atlasverify-case-${report.case.id}.csv`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (status === 'loading' || loading) {
     return (
       <DashboardLayout>
@@ -231,6 +243,9 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
           </div>
           <Button variant="outline" onClick={downloadJson} className="border-slate-600 text-slate-300">
             <Download className="mr-2 h-4 w-4" /> JSON
+          </Button>
+          <Button variant="outline" onClick={downloadCsv} className="border-slate-600 text-slate-300">
+            <Download className="mr-2 h-4 w-4" /> CSV
           </Button>
           <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700">
             <Printer className="mr-2 h-4 w-4" /> Print / Save PDF
