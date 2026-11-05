@@ -5,6 +5,7 @@ import { createAuditLog } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getProvider } from '@/providers'
 import { lookupNhtsaModelRecalls } from '@/lib/nhtsa-recalls'
+import { lookupNhtsaModelComplaints } from '@/lib/nhtsa-complaints'
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -70,6 +71,24 @@ export async function POST(request: NextRequest) {
     officialVinRecallUrl: `https://www.nhtsa.gov/recalls?vin=${encodeURIComponent(vin)}`,
   }
 
+  let safetyComplaints: {
+    available: boolean
+    records: Awaited<ReturnType<typeof lookupNhtsaModelComplaints>>['records']
+    sourceUrl: string | null
+    error: string | null
+    scope: 'year_make_model'
+    verifiedDefects: false
+    vinSpecific: false
+  } = {
+    available: false,
+    records: [],
+    sourceUrl: null,
+    error: null,
+    scope: 'year_make_model',
+    verifiedDefects: false,
+    vinSpecific: false,
+  }
+
   if (payload.success) {
     const vehicle = (payload.data as { vehicle?: Record<string, unknown> }).vehicle
     const make = typeof vehicle?.make === 'string' ? vehicle.make.trim() : ''
@@ -77,18 +96,40 @@ export async function POST(request: NextRequest) {
     const modelYear = typeof vehicle?.modelYear === 'string' ? vehicle.modelYear.trim() : ''
 
     if (make && model && /^\d{4}$/.test(modelYear)) {
-      try {
-        const recallResult = await lookupNhtsaModelRecalls(make, model, modelYear)
+      const [recallResult, complaintResult] = await Promise.allSettled([
+        lookupNhtsaModelRecalls(make, model, modelYear),
+        lookupNhtsaModelComplaints(make, model, modelYear),
+      ])
+
+      if (recallResult.status === 'fulfilled') {
         safetyRecalls = {
           ...safetyRecalls,
           available: true,
-          records: recallResult.records,
-          sourceUrl: recallResult.sourceUrl,
+          records: recallResult.value.records,
+          sourceUrl: recallResult.value.sourceUrl,
         }
-      } catch (error) {
+      } else {
         safetyRecalls = {
           ...safetyRecalls,
-          error: error instanceof Error ? error.message : 'NHTSA recall lookup failed.',
+          error: recallResult.reason instanceof Error
+            ? recallResult.reason.message
+            : 'NHTSA recall lookup failed.',
+        }
+      }
+
+      if (complaintResult.status === 'fulfilled') {
+        safetyComplaints = {
+          ...safetyComplaints,
+          available: true,
+          records: complaintResult.value.records,
+          sourceUrl: complaintResult.value.sourceUrl,
+        }
+      } else {
+        safetyComplaints = {
+          ...safetyComplaints,
+          error: complaintResult.reason instanceof Error
+            ? complaintResult.reason.message
+            : 'NHTSA complaint lookup failed.',
         }
       }
     }
@@ -105,6 +146,7 @@ export async function POST(request: NextRequest) {
     historyReport: false,
     recallLookupAttempted: payload.success,
     recallRecordsReturned: safetyRecalls.records.length,
+    complaintRecordsReturned: safetyComplaints.records.length,
   })
 
   if (!payload.success) {
@@ -140,11 +182,12 @@ export async function POST(request: NextRequest) {
       confidenceScore: payload.confidenceScore,
       evidenceFacts: payload.evidenceFacts ?? [],
       safetyRecalls,
+      safetyComplaints,
       policy: {
         mayPersist: provider.sourcePolicy.mayPersist,
         historyReport: false,
         description:
-          'Official manufacturer-reported VIN decoding plus general NHTSA year/make/model recall information when available. Recall matches are not proof that this VIN has an unrepaired recall. This is not a title, ownership, accident, lien, registration, or vehicle-history report.',
+          'Official manufacturer-reported VIN decoding plus general NHTSA year/make/model recall and consumer-complaint context when available. Recall matches are not proof that this VIN has an unrepaired recall. Consumer complaints are reports, not verified defect findings, and are not VIN-specific. This is not a title, ownership, accident, lien, registration, or vehicle-history report.',
       },
     },
     {
