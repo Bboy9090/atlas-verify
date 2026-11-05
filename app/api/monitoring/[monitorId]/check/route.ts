@@ -10,6 +10,7 @@ import {
   diffEvidenceManifests,
   type EvidenceManifestEntry,
 } from '@/lib/monitoring'
+import { isSubjectSuppressed, loadApprovedSuppressionHashes } from '@/lib/subject-suppression'
 
 interface RouteParams {
   params: Promise<{ monitorId: string }>
@@ -90,6 +91,27 @@ export async function POST(_request: Request, { params }: RouteParams) {
 
   if (!monitor.enabled) {
     return NextResponse.json({ error: 'Monitor is disabled' }, { status: 409 })
+  }
+
+  const approvedSuppressionHashes = await loadApprovedSuppressionHashes([monitor.subject])
+  if (isSubjectSuppressed(monitor.subject, approvedSuppressionHashes)) {
+    await prisma.subjectMonitor.update({
+      where: { id: monitor.id },
+      data: { enabled: false },
+    })
+
+    await createAuditLog(userId, 'CHECK_MONITOR', {
+      monitorId: monitor.id,
+      caseId: monitor.subject.case.id,
+      subjectId: monitor.subject.id,
+      blockedBySuppression: true,
+      automaticProviderMonitoring: false,
+    }, monitor.subject.id)
+
+    return NextResponse.json(
+      { error: 'Monitor disabled because the subject matches an approved suppression request.' },
+      { status: 409 }
+    )
   }
 
   const facts = monitor.subject.enrichmentResults.flatMap(result =>
