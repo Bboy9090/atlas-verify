@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { createAuditLog } from '@/lib/audit'
 import { detectSearchKind, scoreSubjectMatch, type SearchKind } from '@/lib/search'
+import { hashSuppressionIdentifier, type SuppressionIdentifierType } from '@/lib/suppression'
 
 const VALID_KINDS = new Set<SearchKind>(['auto', 'name', 'phone', 'email', 'address', 'username'])
 
@@ -70,7 +71,49 @@ export async function GET(request: NextRequest) {
     take: 250,
   })
 
-  const candidates = subjects
+  const subjectHashes = subjects.flatMap(subject => {
+    const identifiers: Array<[SuppressionIdentifierType, string | null]> = [
+      ['name', subject.fullName],
+      ['phone', subject.phoneE164],
+      ['email', subject.email],
+      ['address', subject.address],
+      ['username', subject.username],
+    ]
+
+    return identifiers
+      .filter((entry): entry is [SuppressionIdentifierType, string] => Boolean(entry[1]?.trim()))
+      .map(([type, value]) => hashSuppressionIdentifier(type, value))
+  })
+
+  const approvedSuppressions = subjectHashes.length
+    ? await prisma.suppressionRequest.findMany({
+        where: {
+          status: 'approved',
+          identifierHash: { in: Array.from(new Set(subjectHashes)) },
+        },
+        select: { identifierHash: true },
+      })
+    : []
+
+  const suppressedHashes = new Set(approvedSuppressions.map(record => record.identifierHash))
+  const isSuppressedSubject = (subject: typeof subjects[number]) => {
+    const identifiers: Array<[SuppressionIdentifierType, string | null]> = [
+      ['name', subject.fullName],
+      ['phone', subject.phoneE164],
+      ['email', subject.email],
+      ['address', subject.address],
+      ['username', subject.username],
+    ]
+
+    return identifiers.some(([type, value]) =>
+      Boolean(value?.trim()) && suppressedHashes.has(hashSuppressionIdentifier(type, value!))
+    )
+  }
+
+  const visibleSubjects = subjects.filter(subject => !isSuppressedSubject(subject))
+  const suppressedSubjectCount = subjects.length - visibleSubjects.length
+
+  const candidates = visibleSubjects
     .map(subject => {
       const match = scoreSubjectMatch(subject, query, requestedKind)
       const evidenceFacts = subject.enrichmentResults.flatMap(result => result.evidenceFacts)
@@ -114,6 +157,7 @@ export async function GET(request: NextRequest) {
     requestedType: requestedKind,
     queryLength: query.length,
     candidateCount: candidates.length,
+    suppressedSubjectCount,
     coverage: {
       workspace: true,
       externalProviders: false,
@@ -128,7 +172,8 @@ export async function GET(request: NextRequest) {
     coverage: {
       workspace: {
         enabled: true,
-        description: 'Searches subjects already stored in your AtlasVerify cases.',
+        description: 'Searches subjects already stored in your AtlasVerify cases, excluding approved suppressed identifiers.',
+        suppressedSubjectCount,
       },
       externalProviders: {
         enabled: false,
