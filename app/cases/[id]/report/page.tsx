@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { caseReportToCsv } from '@/lib/case-report-csv'
+import { verifyCaseReportReceipt } from '@/lib/case-report-verifier'
 
 interface ReportItem {
   field: string
@@ -169,6 +170,7 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
   const { status } = useSession()
   const router = useRouter()
   const [report, setReport] = useState<CaseReport | null>(null)
+  const verifyInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -216,6 +218,31 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
     URL.revokeObjectURL(url)
   }
 
+  const verifyDownloadedReport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    try {
+      const parsed = JSON.parse(await file.text()) as Record<string, unknown>
+      if (parsed.schemaVersion !== 'atlasverify.case-report.v1') {
+        toast.error('This is not an AtlasVerify v1 case report.')
+        return
+      }
+
+      const result = await verifyCaseReportReceipt(parsed)
+      if (result.valid) {
+        toast.success(`Receipt verified: SHA-256 ${result.actual.slice(0, 12)}… matches the report body.`)
+      } else if (!result.expected) {
+        toast.error('This report has no receipt hash to verify.')
+      } else {
+        toast.error('Receipt mismatch: this report body does not match its stored SHA-256 receipt.')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'The report could not be verified.')
+    }
+  }
+
   if (status === 'loading' || loading) {
     return (
       <DashboardLayout>
@@ -247,6 +274,16 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
           <Button variant="outline" onClick={downloadCsv} className="border-slate-600 text-slate-300">
             <Download className="mr-2 h-4 w-4" /> CSV
           </Button>
+          <Button variant="outline" onClick={() => verifyInputRef.current?.click()} className="border-emerald-600/50 text-emerald-300">
+            <ShieldCheck className="mr-2 h-4 w-4" /> Verify report
+          </Button>
+          <input
+            ref={verifyInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={verifyDownloadedReport}
+          />
           <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700">
             <Printer className="mr-2 h-4 w-4" /> Print / Save PDF
           </Button>
