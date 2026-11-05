@@ -291,7 +291,28 @@ export default function PropertiesPage() {
                       {record.beds !== null && <span>{record.beds} beds</span>}
                       {record.baths !== null && <span>{record.baths} baths</span>}
                       {record.livingArea !== null && <span>{record.livingArea.toLocaleString()} sq ft</span>}
-                      {record.assessedValue !== null && <span>Assessed {'
+                      {record.assessedValue !== null && <span>Assessed ${record.assessedValue.toLocaleString()}</span>}
+                      {record.taxAmount !== null && <span>Tax ${record.taxAmount.toLocaleString()}{record.taxYear ? ` (${record.taxYear})` : ''}</span>}
+                      {record.lastSaleAmount !== null && <span>Last sale ${record.lastSaleAmount.toLocaleString()}</span>}
+                      {record.lastSaleDate && <span>Sale date {record.lastSaleDate}</span>}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 pt-3 text-xs text-slate-500">
+                      <span>Licensed ATTOM property record lead · not proof of current ownership</span>
+                      <a href={record.sourceUrl} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300">
+                        Source
+                      </a>
+                    </div>
+                  </div>
+                ))
+              )}
+              <p className="text-xs leading-5 text-slate-500">
+                {attomResult.data?.limitation || 'Property records are evidence leads and may be incomplete, delayed, or require independent verification.'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {result?.error && (
           <Card className="border-red-500/30 bg-red-500/5">
             <CardContent className="flex items-start gap-3 pt-6 text-red-300">
               <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
