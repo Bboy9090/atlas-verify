@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Building2, Database, FileText, MapPin, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { Building2, Database, FileText, MapPin, ShieldCheck, TriangleAlert, Users } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -85,6 +85,50 @@ interface OpenCorporatesResponse {
   error?: string
 }
 
+interface OfficerResult {
+  officerId: number | null
+  name: string | null
+  position: string | null
+  startDate: string | null
+  endDate: string | null
+  currentStatus: string | null
+  inactive: boolean
+  occupation: string | null
+  sourceUrl: string | null
+  sourcePublisher: string | null
+  company: {
+    name: string | null
+    companyNumber: string | null
+    jurisdictionCode: string | null
+    sourceUrl: string | null
+  }
+}
+
+interface OfficerResponse {
+  available: boolean
+  provider?: {
+    name: string
+    sourceKind: string
+    licenseName: string | null
+    termsUrl: string | null
+  }
+  data?: {
+    officers: OfficerResult[]
+    resultCount: number
+    reportedTotalCount: number | null
+    limitation: string
+  }
+  evidenceFacts?: Array<{ field: string; value: unknown; sourceName: string }>
+  coverage?: { provider: string; description: string }
+  policy?: {
+    identityProof: boolean
+    personalAddressExposed: boolean
+    dateOfBirthExposed: boolean
+    description?: string
+  }
+  error?: string
+}
+
 interface BusinessResponse {
   available: boolean
   provider?: {
@@ -152,9 +196,12 @@ export default function BusinessesPage() {
   const { status } = useSession()
   const router = useRouter()
   const [query, setQuery] = useState('')
+  const [officerQuery, setOfficerQuery] = useState('')
   const [loading, setLoading] = useState(false)
+  const [officerLoading, setOfficerLoading] = useState(false)
   const [result, setResult] = useState<BusinessResponse | null>(null)
   const [openCorporatesResult, setOpenCorporatesResult] = useState<OpenCorporatesResponse | null>(null)
+  const [officerResult, setOfficerResult] = useState<OfficerResponse | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -196,6 +243,35 @@ export default function BusinessesPage() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const searchOfficer = async (event: FormEvent) => {
+    event.preventDefault()
+    const q = officerQuery.trim()
+    if (q.length < 2) {
+      toast.error('Enter an officer or director name.')
+      return
+    }
+
+    setOfficerLoading(true)
+    setOfficerResult(null)
+    try {
+      const response = await fetchBusinessSource<OfficerResponse>(
+        '/api/businesses/officers',
+        q,
+        'OpenCorporates officers',
+      )
+      if ('data' in response) {
+        setOfficerResult(response.data)
+        if (!response.response.ok && response.response.status !== 503) {
+          toast.error(response.data.error || 'Officer search failed')
+        }
+      } else {
+        toast.error(response.error)
+      }
+    } finally {
+      setOfficerLoading(false)
     }
   }
 
@@ -245,6 +321,108 @@ export default function BusinessesPage() {
             </form>
           </CardContent>
         </Card>
+
+        <Card className="border-slate-700 bg-slate-800/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Users className="h-5 w-5 text-blue-400" />
+              Officer / director search
+            </CardTitle>
+            <CardDescription className="text-slate-400">
+              Search public company-registry officer associations. Atlas does not expose date of birth or personal-address fields here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={searchOfficer} className="flex flex-col gap-3 md:flex-row">
+              <Input
+                value={officerQuery}
+                onChange={event => setOfficerQuery(event.target.value)}
+                placeholder="Officer or director name"
+                className="bg-slate-900 text-white"
+              />
+              <Button type="submit" disabled={officerLoading} variant="outline">
+                {officerLoading ? 'Searching...' : 'Search officers'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {officerResult && !officerResult.available && (
+          <Card className="border-yellow-500/20 bg-yellow-500/5">
+            <CardContent className="flex items-start gap-3 pt-6 text-sm text-yellow-100/80">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+              <span>{officerResult.coverage?.description || 'OpenCorporates officer integration is not configured.'}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {officerResult?.error && (
+          <Card className="border-red-500/30 bg-red-500/5">
+            <CardContent className="flex items-start gap-3 pt-6 text-red-300">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+              <span>{officerResult.error}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {officerResult?.available && !officerResult.error && (
+          <Card className="border-violet-500/20 bg-violet-500/5">
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-violet-200">Officer/company association candidates</CardTitle>
+                  <CardDescription className="mt-1 text-slate-400">
+                    {officerResult.data?.resultCount ?? 0} returned
+                    {officerResult.data?.reportedTotalCount !== null && officerResult.data?.reportedTotalCount !== undefined
+                      ? ` · ${officerResult.data.reportedTotalCount} reported matches`
+                      : ''}
+                    {' · '}{officerResult.evidenceFacts?.length ?? 0} source-backed facts
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="border-violet-500/30 text-violet-300">Identity proof: no</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(officerResult.data?.officers || []).length === 0 ? (
+                <div className="py-4 text-center text-sm text-slate-400">No matching officer association returned.</div>
+              ) : (
+                (officerResult.data?.officers || []).map((officer, index) => (
+                  <div key={officer.officerId ?? index} className="rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-white">{officer.name || 'Unnamed officer'}</div>
+                        <div className="mt-1 text-sm text-slate-300">
+                          {officer.position || officer.occupation || 'Role unavailable'}
+                        </div>
+                      </div>
+                      {officer.inactive && <Badge variant="outline" className="border-slate-600 text-slate-400">Inactive</Badge>}
+                    </div>
+                    <div className="mt-3 rounded border border-slate-700 bg-slate-950/50 p-3">
+                      <div className="text-xs uppercase tracking-wide text-slate-500">Associated company</div>
+                      <div className="mt-1 text-sm font-medium text-slate-200">{officer.company.name || 'Company name unavailable'}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {[officer.company.jurisdictionCode, officer.company.companyNumber].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                      {officer.startDate && <span>Started {officer.startDate}</span>}
+                      {officer.endDate && <span>Ended {officer.endDate}</span>}
+                      {officer.sourcePublisher && <span>Source: {officer.sourcePublisher}</span>}
+                    </div>
+                    {officer.sourceUrl && (
+                      <a href={officer.sourceUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs text-blue-400 hover:text-blue-300">
+                        Open officer record
+                      </a>
+                    )}
+                  </div>
+                ))
+              )}
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100/80">
+                {officerResult.policy?.description || officerResult.data?.limitation}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {openCorporatesResult && !openCorporatesResult.available && (
           <Card className="border-yellow-500/20 bg-yellow-500/5">
