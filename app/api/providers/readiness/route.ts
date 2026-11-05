@@ -120,6 +120,13 @@ export async function GET() {
       'licensed_api',
     ),
     item(
+      'vinaudit_plate_to_vin',
+      'VinAudit Plate to VIN',
+      ['VINAUDIT_API_KEY'],
+      'Licensed U.S. plate-and-state to VIN resolution; not ownership or registration proof.',
+      'licensed_api',
+    ),
+    item(
       'nppes',
       'NPPES NPI Registry',
       [],
