@@ -127,7 +127,7 @@ export function buildCaseReport(input: CaseReportInput, generatedAt = new Date()
       'This report contains research leads and evidence summaries, not identity proof.',
       'Case-entered identifiers are user-supplied and are not independently verified unless supported by evidence facts.',
       'Public-record and licensed-source data can be incomplete, stale, or associated with the wrong person.',
-      'Bobby's Case File is not a consumer reporting agency and this report is not for FCRA eligibility decisions.',
+      "Bobby's Case File is not a consumer reporting agency and this report is not for FCRA eligibility decisions.",
     ],
   }
 
