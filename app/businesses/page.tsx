@@ -120,6 +120,34 @@ function formatAddress(value: Record<string, string | null> | null) {
   ].filter(Boolean).join(', ')
 }
 
+type SourceResult<T> =
+  | { response: Response; data: T }
+  | { error: string }
+
+async function fetchBusinessSource<T>(url: string, q: string, label: string): Promise<SourceResult<T>> {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ q }),
+    })
+
+    let data: T
+    try {
+      data = await response.json() as T
+    } catch {
+      return { error: `${label} returned an invalid response.` }
+    }
+
+    return { response, data }
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : `${label} request failed.`,
+    }
+  }
+}
+
 export default function BusinessesPage() {
   const { status } = useSession()
   const router = useRouter()
@@ -144,31 +172,28 @@ export default function BusinessesPage() {
     setResult(null)
     setOpenCorporatesResult(null)
     try {
-      const [secResponse, ocResponse] = await Promise.all([
-        fetch('/api/businesses/sec', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-          body: JSON.stringify({ q }),
-        }),
-        fetch('/api/businesses/opencorporates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          cache: 'no-store',
-          body: JSON.stringify({ q }),
-        }),
+      const [sec, openCorporates] = await Promise.all([
+        fetchBusinessSource<BusinessResponse>('/api/businesses/sec', q, 'SEC EDGAR'),
+        fetchBusinessSource<OpenCorporatesResponse>('/api/businesses/opencorporates', q, 'OpenCorporates'),
       ])
-      const [secData, ocData] = await Promise.all([secResponse.json(), ocResponse.json()])
-      setResult(secData)
-      setOpenCorporatesResult(ocData)
-      if (!secResponse.ok && secResponse.status !== 503) {
-        toast.error(secData.error || 'SEC EDGAR search failed')
+
+      if ('data' in sec) {
+        setResult(sec.data)
+        if (!sec.response.ok && sec.response.status !== 503) {
+          toast.error(sec.data.error || 'SEC EDGAR search failed')
+        }
+      } else {
+        toast.error(sec.error)
       }
-      if (!ocResponse.ok && ocResponse.status !== 503) {
-        toast.error(ocData.error || 'OpenCorporates search failed')
+
+      if ('data' in openCorporates) {
+        setOpenCorporatesResult(openCorporates.data)
+        if (!openCorporates.response.ok && openCorporates.response.status !== 503) {
+          toast.error(openCorporates.data.error || 'OpenCorporates search failed')
+        }
+      } else {
+        toast.error(openCorporates.error)
       }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'SEC EDGAR search failed')
     } finally {
       setLoading(false)
     }
