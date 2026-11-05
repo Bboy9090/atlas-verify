@@ -27,7 +27,7 @@ export default function AccountPage() {
       const body = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(body.error || 'Account deletion failed')
 
-      toast.success('Account and associated Bobby's Case File data deleted')
+      toast.success('Account and associated Bobby's Case File data deleted")
       await signOut({ callbackUrl: '/' })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Account deletion failed')
