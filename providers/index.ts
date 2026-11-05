@@ -10,6 +10,7 @@ import './nppes-license-provider'
 import './sec-business-provider'
 import './opencorporates-provider'
 import './nyc-acris-property-provider'
+import './attom-property-provider'
 import './ofac-sanctions-provider'
 import './courtlistener-provider'
 
