@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { buildProfileIntelligence } from '@/lib/profile-intelligence'
 import { buildEvidenceTimeline, buildRelationshipGraph } from '@/lib/evidence-views'
 import { resolveEntityEvidence } from '@/lib/entity-resolution'
+import { buildEvidenceFreshnessLedger } from '@/lib/evidence-freshness'
 
 interface RouteParams {
   params: Promise<{ id: string; subjectId: string }>
@@ -72,6 +73,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const timeline = buildEvidenceTimeline(facts)
   const relationshipGraph = buildRelationshipGraph(subject.id, subject.fullName, profile)
   const resolution = resolveEntityEvidence(facts)
+  const freshness = buildEvidenceFreshnessLedger(facts)
 
   return NextResponse.json({
     subject: {
@@ -90,6 +92,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     timeline,
     relationshipGraph,
     resolution,
+    freshness,
     evidenceFactCount: facts.length,
   })
 }
