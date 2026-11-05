@@ -36,6 +36,31 @@ interface SafetyComplaintRecord {
   deaths: number | null
 }
 
+interface VehicleHistoryResponse {
+  available: boolean
+  provider?: {
+    name: string
+    sourceKind: string
+    licenseName: string | null
+    termsUrl: string | null
+  }
+  data?: {
+    vin?: string
+    reportId?: string | null
+    reportDate?: string | null
+    attributes?: Record<string, unknown>
+    titles?: unknown[]
+    checks?: Record<string, unknown>
+    events?: unknown[]
+    limitation?: string
+  }
+  confidenceScore?: number
+  evidenceFacts?: Array<{ field: string; value: unknown; sourceName: string }>
+  coverage?: { provider: string; description: string }
+  policy?: { historyReport?: boolean; description?: string }
+  error?: string
+}
+
 interface VinResponse {
   available: boolean
   provider?: {
@@ -109,6 +134,7 @@ export default function VehiclePage() {
   const [vin, setVin] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<VinResponse | null>(null)
+  const [historyResult, setHistoryResult] = useState<VehicleHistoryResponse | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -125,21 +151,38 @@ export default function VehiclePage() {
 
     setLoading(true)
     setResult(null)
+    setHistoryResult(null)
 
     try {
-      const response = await fetch('/api/vehicle/vin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-        body: JSON.stringify({ vin: normalized }),
-      })
-      const data = await response.json()
-      setResult(data)
-      if (!response.ok) {
-        toast.error(data.error || 'VIN decode failed')
+      const [decodeResponse, historyResponse] = await Promise.all([
+        fetch('/api/vehicle/vin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ vin: normalized }),
+        }),
+        fetch('/api/vehicle/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ vin: normalized }),
+        }),
+      ])
+
+      const [decodeData, historyData] = await Promise.all([
+        decodeResponse.json(),
+        historyResponse.json(),
+      ])
+
+      setResult(decodeData)
+      setHistoryResult(historyData)
+
+      if (!decodeResponse.ok) toast.error(decodeData.error || 'VIN decode failed')
+      if (!historyResponse.ok && historyResponse.status !== 503) {
+        toast.error(historyData.error || 'Licensed vehicle-history lookup failed')
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'VIN decode failed')
+      toast.error(error instanceof Error ? error.message : 'VIN research failed')
     } finally {
       setLoading(false)
     }
@@ -406,6 +449,82 @@ export default function VehiclePage() {
                       Showing the first 20 of {result.safetyComplaints.records.length} complaint records.
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            )}
+
+            {historyResult && !historyResult.available && (
+              <Card className="border-yellow-500/20 bg-yellow-500/5">
+                <CardHeader>
+                  <CardTitle className="text-yellow-100">Licensed vehicle history</CardTitle>
+                  <CardDescription className="text-slate-400">
+                    {historyResult.coverage?.description || 'Vehicle-history provider is not configured.'}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+
+            {historyResult?.available && !historyResult.error && (
+              <Card className="border-cyan-500/20 bg-cyan-500/5">
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-cyan-200">Licensed vehicle history</CardTitle>
+                      <CardDescription className="mt-1 text-slate-400">
+                        {historyResult.provider?.licenseName || 'VinAudit Vehicle History API'} · separate from NHTSA VIN decoding
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline" className="border-cyan-500/30 text-cyan-300">
+                      {Math.round((historyResult.confidenceScore ?? 0) * 100)}% source confidence
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+                      <div className="text-xs uppercase tracking-wide text-slate-500">Title records</div>
+                      <div className="mt-1 text-lg font-semibold text-white">{historyResult.data?.titles?.length ?? 0}</div>
+                    </div>
+                    <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+                      <div className="text-xs uppercase tracking-wide text-slate-500">History events</div>
+                      <div className="mt-1 text-lg font-semibold text-white">{historyResult.data?.events?.length ?? 0}</div>
+                    </div>
+                    <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+                      <div className="text-xs uppercase tracking-wide text-slate-500">Source-backed facts</div>
+                      <div className="mt-1 text-lg font-semibold text-white">{historyResult.evidenceFacts?.length ?? 0}</div>
+                    </div>
+                  </div>
+
+                  {historyResult.data?.checks && Object.keys(historyResult.data.checks).length > 0 && (
+                    <div>
+                      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">History checks</div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {Object.entries(historyResult.data.checks).slice(0, 30).map(([key, value]) => (
+                          <div key={key} className="rounded-lg border border-slate-700 bg-slate-900/60 p-3 text-sm">
+                            <div className="text-xs uppercase tracking-wide text-slate-500">{key.replaceAll('_', ' ')}</div>
+                            <div className="mt-1 break-words text-slate-200">
+                              {typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+                                ? String(value)
+                                : JSON.stringify(value)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100/80">
+                    {historyResult.policy?.description || historyResult.data?.limitation}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {historyResult?.error && (
+              <Card className="border-red-500/30 bg-red-500/5">
+                <CardContent className="flex items-start gap-3 pt-6 text-red-300">
+                  <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+                  <span>Licensed vehicle history: {historyResult.error}</span>
                 </CardContent>
               </Card>
             )}
