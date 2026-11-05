@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { buildEvidenceSnapshot } from '@/lib/monitoring'
+import { isSubjectSuppressed, loadApprovedSuppressionHashes } from '@/lib/subject-suppression'
 
 interface RouteParams {
   params: Promise<{ id: string; subjectId: string }>
@@ -71,6 +72,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
   }
 
   const monitor = subject.monitors[0] ?? null
+  const approvedSuppressionHashes = await loadApprovedSuppressionHashes([subject])
+  const suppressed = isSubjectSuppressed(subject, approvedSuppressionHashes)
 
   return NextResponse.json({
     subject: {
@@ -79,8 +82,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
       case: subject.case,
     },
     monitor,
-    currentSnapshot: buildEvidenceSnapshot(factsForSnapshot(subject)),
+    suppressed,
+    currentSnapshot: suppressed ? null : buildEvidenceSnapshot(factsForSnapshot(subject)),
     automaticProviderMonitoring: false,
+    message: suppressed
+      ? 'Monitoring is blocked because this subject matches an approved suppression request.'
+      : undefined,
   }, {
     headers: { 'Cache-Control': 'no-store, private' },
   })
@@ -106,6 +113,14 @@ export async function POST(_request: Request, { params }: RouteParams) {
 
   if (!subject) {
     return NextResponse.json({ error: 'Subject not found' }, { status: 404 })
+  }
+
+  const approvedSuppressionHashes = await loadApprovedSuppressionHashes([subject])
+  if (isSubjectSuppressed(subject, approvedSuppressionHashes)) {
+    return NextResponse.json(
+      { error: 'Subject is suppressed and cannot be monitored.' },
+      { status: 409 }
+    )
   }
 
   const snapshot = buildEvidenceSnapshot(factsForSnapshot(subject))
