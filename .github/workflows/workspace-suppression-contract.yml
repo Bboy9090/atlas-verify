@@ -6,6 +6,7 @@ on:
     paths:
       - 'app/api/search/route.ts'
       - 'app/api/cases/[id]/subjects/[subjectId]/monitor/route.ts'
+      - 'app/api/cases/[id]/report/route.ts'
       - 'app/api/monitoring/[monitorId]/check/route.ts'
       - 'app/api/monitoring/route.ts'
       - 'lib/suppression.ts'

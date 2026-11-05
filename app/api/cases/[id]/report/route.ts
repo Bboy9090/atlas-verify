@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { createAuditLog } from '@/lib/audit'
 import { buildCaseReport } from '@/lib/case-report'
+import { isSubjectSuppressed, loadApprovedSuppressionHashes } from '@/lib/subject-suppression'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -48,6 +49,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: 'Case not found' }, { status: 404 })
   }
 
+  const approvedSuppressionHashes = await loadApprovedSuppressionHashes(caseData.subjects)
+  const visibleSubjects = caseData.subjects.filter(
+    subject => !isSubjectSuppressed(subject, approvedSuppressionHashes)
+  )
+  const suppressedSubjectCount = caseData.subjects.length - visibleSubjects.length
+
   const report = buildCaseReport({
     id: caseData.id,
     title: caseData.title,
@@ -55,7 +62,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     status: caseData.status,
     createdAt: caseData.createdAt,
     updatedAt: caseData.updatedAt,
-    subjects: caseData.subjects.map(subject => ({
+    subjects: visibleSubjects.map(subject => ({
       id: subject.id,
       fullName: subject.fullName,
       phoneE164: subject.phoneE164,
@@ -91,6 +98,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   await createAuditLog(userId, 'EXPORT_CASE_REPORT', {
     caseId: id,
     subjectCount: report.summary.subjectCount,
+    suppressedSubjectCount,
     evidenceFactCount: report.summary.evidenceFactCount,
     sourceCount: report.summary.sourceCount,
     reportHash: report.receipt.hash,
