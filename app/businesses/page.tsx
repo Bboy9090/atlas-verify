@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Building2, Database, FileText, MapPin, ShieldCheck, TriangleAlert, Users } from 'lucide-react'
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { correlateBusinessCandidates } from '@/lib/business-resolution'
 
 interface EntityResult {
   cik: string
@@ -286,6 +287,26 @@ export default function BusinessesPage() {
   }
 
   const entities = result?.data?.entities ?? []
+  const registryEntities = openCorporatesResult?.data?.entities ?? []
+  const businessCorrelations = useMemo(
+    () => correlateBusinessCandidates(
+      entities.map(entity => ({
+        cik: entity.cik,
+        name: entity.name,
+        ticker: entity.ticker,
+        stateOfIncorporation: entity.stateOfIncorporation,
+        sourceUrl: entity.sourceUrl,
+      })),
+      registryEntities.map(entity => ({
+        name: entity.name,
+        companyNumber: entity.companyNumber,
+        jurisdictionCode: entity.jurisdictionCode,
+        currentStatus: entity.currentStatus,
+        sourceUrl: entity.sourceUrl,
+      })),
+    ),
+    [entities, registryEntities],
+  )
 
   return (
     <DashboardLayout>
@@ -499,6 +520,63 @@ export default function BusinessesPage() {
               )}
               <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100/80">
                 {openCorporatesResult.policy?.description || openCorporatesResult.data?.limitation}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {businessCorrelations.length > 0 && (
+          <Card className="border-cyan-500/20 bg-cyan-500/5">
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-cyan-200">Cross-source business candidates</CardTitle>
+                  <CardDescription className="mt-1 text-slate-400">
+                    Exact normalized company-name overlaps between SEC EDGAR and OpenCorporates.
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="border-cyan-500/30 text-cyan-300">
+                  Identity confirmed: no
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {businessCorrelations.map(correlation => (
+                <div key={`${correlation.secCik}:${correlation.registryCompanyNumber || correlation.registryJurisdiction || correlation.name}`} className="rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium text-white">{correlation.name}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        SEC CIK {correlation.secCik}
+                        {correlation.registryCompanyNumber ? ` · Registry # ${correlation.registryCompanyNumber}` : ''}
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={
+                        correlation.jurisdictionAgreement === true
+                          ? 'border-green-500/30 text-green-300'
+                          : correlation.jurisdictionAgreement === false
+                            ? 'border-amber-500/30 text-amber-300'
+                            : 'border-slate-600 text-slate-300'
+                      }
+                    >
+                      {Math.round(correlation.confidence * 100)}% correlation
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-2">
+                    <div>SEC jurisdiction: {correlation.secJurisdiction || 'not available'}</div>
+                    <div>Registry jurisdiction: {correlation.registryJurisdiction || 'not available'}</div>
+                  </div>
+                  <div className="mt-3 space-y-1 text-xs text-slate-500">
+                    {correlation.rationale.map((reason, index) => (
+                      <div key={index}>• {reason}</div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100/80">
+                These are corroboration candidates only. Exact normalized company-name agreement is required; jurisdiction agreement strengthens confidence, while conflicts are preserved for manual review.
               </div>
             </CardContent>
           </Card>
