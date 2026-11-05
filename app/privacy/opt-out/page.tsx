@@ -80,7 +80,7 @@ export default function OptOutPage() {
           </Link>
           <div className="flex items-center gap-2 text-white">
             <Shield className="h-6 w-6 text-blue-500" />
-            <span className="font-semibold">AtlasVerify</span>
+            <span className="font-semibold">Bobby's Case File</span>
           </div>
         </div>
 
@@ -91,8 +91,8 @@ export default function OptOutPage() {
               Suppression / Opt-Out Request
             </CardTitle>
             <CardDescription className="text-slate-400">
-              Request suppression of a specific identifier from future AtlasVerify-controlled live enrichment queries.
-              AtlasVerify stores a one-way hash of the identifier for enforcement rather than retaining the submitted identifier in plaintext.
+              Request suppression of a specific identifier from future Bobby's Case File-controlled live enrichment queries.
+              Bobby's Case File stores a one-way hash of the identifier for enforcement rather than retaining the submitted identifier in plaintext.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -121,7 +121,7 @@ export default function OptOutPage() {
                   required
                   maxLength={300}
                   className="border-slate-600 bg-slate-900 text-white"
-                  placeholder="Enter the exact identifier shown in AtlasVerify"
+                  placeholder="Enter the exact identifier shown in Bobby's Case File"
                 />
               </div>
 
@@ -139,8 +139,8 @@ export default function OptOutPage() {
               </div>
 
               <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3 text-xs text-slate-400">
-                Do not submit government ID unless AtlasVerify specifically requests additional verification.
-                Approval blocks future AtlasVerify-controlled live enrichment for the exact identifier; it does not rewrite historical case evidence or remove data from upstream public or licensed sources.
+                Do not submit government ID unless Bobby's Case File specifically requests additional verification.
+                Approval blocks future Bobby's Case File-controlled live enrichment for the exact identifier; it does not rewrite historical case evidence or remove data from upstream public or licensed sources.
               </div>
 
               <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">

@@ -11,7 +11,7 @@ export default function LegalDocsPage() {
         <nav className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Shield className="h-8 w-8 text-blue-500" />
-            <span className="text-2xl font-bold text-white">AtlasVerify</span>
+            <span className="text-2xl font-bold text-white">Bobby's Case File</span>
           </Link>
           <Link href="/">
             <Button variant="ghost" className="text-slate-300 hover:text-white">
@@ -42,7 +42,7 @@ export default function LegalDocsPage() {
 
             <h3 className="text-white mt-6">1. Purpose</h3>
             <p className="text-slate-300">
-              AtlasVerify provides subject intelligence and verification services designed for lawful investigative purposes. 
+              Bobby's Case File provides subject intelligence and verification services designed for lawful investigative purposes. 
               This Acceptable Use Policy ("AUP") outlines the terms under which our services may be used.
             </p>
 
@@ -82,7 +82,7 @@ export default function LegalDocsPage() {
 
             <h3 className="text-white mt-6">4. User Responsibilities</h3>
             <p className="text-slate-300">
-              AtlasVerify's standard product is not a consumer reporting agency and must not be used for
+              Bobby's Case File's standard product is not a consumer reporting agency and must not be used for
               employment, tenant, credit, insurance, government-benefit, or other regulated eligibility
               decisions. Users are responsible for lawful purpose, provider terms, consent where required,
               and applicable privacy laws.
@@ -109,16 +109,16 @@ export default function LegalDocsPage() {
 
             <h3 className="text-white mt-6">Subject Rights</h3>
             <p className="text-slate-300">
-              AtlasVerify respects the privacy rights of individuals. If you believe your information
-              appears in AtlasVerify-controlled search results or indexes and wish to request suppression,
+              Bobby's Case File respects the privacy rights of individuals. If you believe your information
+              appears in Bobby's Case File-controlled search results or indexes and wish to request suppression,
               you may submit a request using the process below.
             </p>
 
             <h3 className="text-white mt-6">How to Submit an Opt-Out Request</h3>
             <div className="bg-slate-900/50 rounded-lg p-6 mt-4 space-y-4 text-slate-300">
               <p>
-                Use the AtlasVerify suppression-request form. Submit the exact identifier shown in AtlasVerify
-                and a contact email for verification and resolution. AtlasVerify stores a one-way hash of the
+                Use the Bobby's Case File suppression-request form. Submit the exact identifier shown in Bobby's Case File
+                and a contact email for verification and resolution. Bobby's Case File stores a one-way hash of the
                 submitted identifier for suppression enforcement rather than retaining that identifier in plaintext.
               </p>
               <Link href="/privacy/opt-out">
@@ -160,7 +160,7 @@ export default function LegalDocsPage() {
       <footer className="container mx-auto px-4 py-8 border-t border-slate-700 mt-12">
         <div className="flex items-center justify-center gap-2 text-slate-400">
           <Shield className="h-5 w-5 text-blue-500" />
-          <span>© 2025 AtlasVerify. All rights reserved.</span>
+          <span>© 2025 Bobby's Case File. All rights reserved.</span>
         </div>
       </footer>
     </div>
