@@ -3,6 +3,7 @@ import type { EvidenceFactLike } from '@/lib/evidence'
 import { summarizeEvidence } from '@/lib/evidence'
 import { buildProfileIntelligence } from '@/lib/profile-intelligence'
 import { buildEvidenceTimeline, buildRelationshipGraph } from '@/lib/evidence-views'
+import type { AppliedEvidenceCorrection } from '@/lib/evidence-corrections'
 
 export interface CaseReportSubjectInput {
   id: string
@@ -16,6 +17,7 @@ export interface CaseReportSubjectInput {
   notes: string | null
   createdAt: Date | string
   evidenceFacts: EvidenceFactLike[]
+  evidenceCorrections?: AppliedEvidenceCorrection[]
 }
 
 export interface CaseReportInput {
@@ -56,6 +58,7 @@ export function buildCaseReport(input: CaseReportInput, generatedAt = new Date()
       profile,
       timeline,
       relationshipGraph,
+      evidenceCorrections: subject.evidenceCorrections ?? [],
     }
   })
 
@@ -120,6 +123,10 @@ export function buildCaseReport(input: CaseReportInput, generatedAt = new Date()
       staleFactCount: subjects.reduce((sum, subject) => sum + subject.evidenceSummary.staleFactCount, 0),
       conflictedFieldCount: subjects.reduce((sum, subject) => sum + subject.evidenceSummary.conflictedFieldCount, 0),
       corroboratedFieldCount: subjects.reduce((sum, subject) => sum + subject.evidenceSummary.corroboratedFieldCount, 0),
+      appliedCorrectionCount: subjects.reduce(
+        (sum, subject) => sum + subject.evidenceCorrections.length,
+        0
+      ),
     },
     subjects,
     sourceRegister,
@@ -127,6 +134,7 @@ export function buildCaseReport(input: CaseReportInput, generatedAt = new Date()
       'This report contains research leads and evidence summaries, not identity proof.',
       'Case-entered identifiers are user-supplied and are not independently verified unless supported by evidence facts.',
       'Public-record and licensed-source data can be incomplete, stale, or associated with the wrong person.',
+      'Resolved correction requests affect this report as a derived overlay; original source evidence remains immutable and is identified in the correction ledger.',
       "Bobby's Case File is not a consumer reporting agency and this report is not for FCRA eligibility decisions.",
     ],
   }
