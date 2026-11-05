@@ -28,7 +28,7 @@ export interface ProviderSubjectInput {
 
 export interface EnrichmentProvider {
   name: string;
-  type: 'phone_lookup' | 'web_search' | 'person_search' | 'profile_search' | 'domain_registration' | 'vehicle_vin' | 'vehicle_history' | 'professional_license' | 'business_entity' | 'property_record' | 'sanctions_watchlist' | 'court_record';
+  type: 'phone_lookup' | 'web_search' | 'person_search' | 'profile_search' | 'domain_registration' | 'vehicle_vin' | 'vehicle_history' | 'plate_to_vin' | 'professional_license' | 'business_entity' | 'property_record' | 'sanctions_watchlist' | 'court_record';
   sourcePolicy: ProviderSourcePolicy;
   lookup?: (input: string) => Promise<EnrichmentPayload>;
   lookupSubject?: (subject: ProviderSubjectInput) => Promise<EnrichmentPayload>;
