@@ -12,6 +12,7 @@ const monitorCheckRoute = fs.readFileSync(
   'utf8',
 );
 const monitoringRoute = fs.readFileSync('app/api/monitoring/route.ts', 'utf8');
+const reportRoute = fs.readFileSync('app/api/cases/[id]/report/route.ts', 'utf8');
 const helper = fs.readFileSync('lib/subject-suppression.ts', 'utf8');
 
 test('approved suppression matching is centralized and one-way hashed', () => {
@@ -57,3 +58,16 @@ test('monitoring index omits suppressed subjects without deleting case evidence'
   assert.match(monitoringRoute, /suppressedMonitorCount/);
   assert.doesNotMatch(monitoringRoute, /subjectMonitor\.delete/);
 });
+
+test('case report export omits suppressed subjects before report construction', () => {
+  const suppressionPos = reportRoute.indexOf('loadApprovedSuppressionHashes(caseData.subjects)');
+  const visiblePos = reportRoute.indexOf('const visibleSubjects = caseData.subjects.filter');
+  const buildPos = reportRoute.indexOf('const report = buildCaseReport');
+  assert.ok(suppressionPos > 0);
+  assert.ok(visiblePos > suppressionPos);
+  assert.ok(buildPos > visiblePos);
+  assert.match(reportRoute, /subjects: visibleSubjects\.map/);
+  assert.match(reportRoute, /suppressedSubjectCount/);
+  assert.doesNotMatch(reportRoute, /subjects: caseData\.subjects\.map/);
+});
+
