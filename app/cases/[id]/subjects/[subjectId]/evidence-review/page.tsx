@@ -171,7 +171,13 @@ export default function EvidenceReviewPage({
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'Failed to resolve dispute')
 
-      toast.success(nextStatus === 'resolved' ? 'Challenge resolved' : 'Challenge rejected')
+      toast.success(
+        nextStatus === 'resolved'
+          ? (dispute.requestedValue !== null && dispute.requestedValue !== undefined
+              ? 'Challenge resolved; requested correction applied to derived views'
+              : 'Challenge resolved; original value retained')
+          : 'Challenge rejected'
+      )
       setResolutionNotes(current => {
         const next = { ...current }
         delete next[dispute.id]
@@ -229,7 +235,7 @@ export default function EvidenceReviewPage({
               Immutable correction workflow
             </CardTitle>
             <CardDescription className="text-slate-400">
-              A dispute records your challenge, requested correction, and final resolution. The underlying evidence fact remains unchanged so provenance and auditability are preserved.
+              A dispute records your challenge, requested correction, and final resolution. When a challenge with a requested value is resolved, that value becomes the effective value in derived Atlas profiles and reports. The underlying evidence fact remains unchanged so provenance and auditability are preserved.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -396,7 +402,9 @@ export default function EvidenceReviewPage({
                                 className="bg-green-600 hover:bg-green-700"
                               >
                                 <CheckCircle2 className="mr-1 h-4 w-4" />
-                                Resolve
+                                {dispute.requestedValue !== null && dispute.requestedValue !== undefined
+                                  ? 'Resolve & apply correction'
+                                  : 'Resolve challenge'}
                               </Button>
                               <Button
                                 size="sm"
