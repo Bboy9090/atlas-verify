@@ -36,6 +36,31 @@ interface SafetyComplaintRecord {
   deaths: number | null
 }
 
+interface PlateVinResponse {
+  available: boolean
+  provider?: {
+    name: string
+    sourceKind: string
+    licenseName: string | null
+    termsUrl: string | null
+  }
+  data?: {
+    vin?: string
+    state?: string
+    limitation?: string
+  }
+  confidenceScore?: number
+  evidenceFacts?: Array<{ field: string; value: unknown; sourceName: string }>
+  coverage?: { provider: string; description: string }
+  policy?: {
+    mayPersist?: boolean
+    ownershipIdentityEstablished?: boolean
+    registrationIdentityEstablished?: boolean
+    description?: string
+  }
+  error?: string
+}
+
 interface VehicleHistoryResponse {
   available: boolean
   provider?: {
@@ -132,6 +157,10 @@ export default function VehiclePage() {
   const { status } = useSession()
   const router = useRouter()
   const [vin, setVin] = useState('')
+  const [plate, setPlate] = useState('')
+  const [plateState, setPlateState] = useState('')
+  const [plateLoading, setPlateLoading] = useState(false)
+  const [plateResult, setPlateResult] = useState<PlateVinResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<VinResponse | null>(null)
   const [historyResult, setHistoryResult] = useState<VehicleHistoryResponse | null>(null)
@@ -139,6 +168,51 @@ export default function VehiclePage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
+
+  const resolvePlate = async (event: FormEvent) => {
+    event.preventDefault()
+    const normalizedPlate = plate.trim().toUpperCase()
+    const normalizedState = plateState.trim().toUpperCase()
+
+    if (!normalizedPlate || normalizedPlate.length > 10 || !/^[A-Z0-9 -]+$/.test(normalizedPlate)) {
+      toast.error('Enter a valid plate using 1-10 letters, numbers, spaces, or hyphens.')
+      return
+    }
+    if (!/^[A-Z]{2}$/.test(normalizedState)) {
+      toast.error('Enter a two-letter U.S. state or DC code.')
+      return
+    }
+
+    setPlateLoading(true)
+    setPlateResult(null)
+    try {
+      const response = await fetch('/api/vehicle/plate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ plate: normalizedPlate, state: normalizedState }),
+      })
+      const data = await response.json()
+      setPlateResult(data)
+
+      if (!response.ok) {
+        if (response.status !== 503) toast.error(data.error || 'Plate-to-VIN lookup failed')
+        return
+      }
+
+      const resolvedVin = typeof data.data?.vin === 'string' ? data.data.vin.toUpperCase() : ''
+      if (/^[A-HJ-NPR-Z0-9]{17}$/.test(resolvedVin)) {
+        setVin(resolvedVin)
+        toast.success('VIN resolved. Run VIN research to decode and check licensed history.')
+      } else {
+        toast.error('The provider did not return a valid VIN.')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Plate-to-VIN lookup failed')
+    } finally {
+      setPlateLoading(false)
+    }
+  }
 
   const decodeVin = async (event: FormEvent) => {
     event.preventDefault()
@@ -210,9 +284,63 @@ export default function VehiclePage() {
             Vehicle VIN
           </h1>
           <p className="mt-1 text-slate-400">
-            Decode a full VIN against official U.S. DOT/NHTSA manufacturer-reported vehicle data.
+            Resolve a U.S. plate to VIN when licensed access is configured, then decode the VIN with NHTSA and query licensed vehicle-history data when available.
           </p>
         </div>
+
+        <Card className="border-cyan-500/20 bg-cyan-500/5">
+          <CardHeader>
+            <CardTitle className="text-cyan-100">Resolve U.S. plate to VIN</CardTitle>
+            <CardDescription className="text-slate-400">
+              Licensed plate-and-state resolution. This does not prove ownership, current registration, address, residence, or person identity.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <form onSubmit={resolvePlate} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_8rem_auto]">
+              <Input
+                value={plate}
+                onChange={event => setPlate(event.target.value.toUpperCase())}
+                maxLength={10}
+                placeholder="License plate"
+                className="bg-slate-900 font-mono tracking-wider text-white"
+              />
+              <Input
+                value={plateState}
+                onChange={event => setPlateState(event.target.value.toUpperCase().slice(0, 2))}
+                maxLength={2}
+                placeholder="State"
+                className="bg-slate-900 font-mono uppercase text-white"
+              />
+              <Button type="submit" disabled={plateLoading} variant="outline">
+                {plateLoading ? 'Resolving…' : 'Resolve plate'}
+              </Button>
+            </form>
+
+            {plateResult && !plateResult.available && (
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-100/80">
+                {plateResult.coverage?.description || 'Licensed plate-to-VIN provider is not configured.'}
+              </div>
+            )}
+
+            {plateResult?.available && !plateResult.error && plateResult.data?.vin && (
+              <div className="rounded-lg border border-cyan-500/20 bg-slate-900/60 p-3 text-sm">
+                <div className="text-xs uppercase tracking-wide text-slate-500">Resolved VIN</div>
+                <div className="mt-1 font-mono text-base font-semibold tracking-wider text-cyan-200">
+                  {plateResult.data.vin}
+                </div>
+                <div className="mt-2 text-xs text-slate-500">
+                  {plateResult.policy?.description || plateResult.data.limitation}
+                </div>
+              </div>
+            )}
+
+            {plateResult?.error && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-300">
+                {plateResult.error}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="border-slate-700 bg-slate-800/50">
           <CardHeader>
@@ -231,7 +359,7 @@ export default function VehiclePage() {
                 className="bg-slate-900 font-mono tracking-wider text-white"
               />
               <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-                {loading ? 'Decoding...' : 'Decode VIN'}
+                {loading ? 'Researching...' : 'Run VIN research'}
               </Button>
             </form>
           </CardContent>
