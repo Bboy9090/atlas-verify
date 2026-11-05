@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Verify Sources & Coverage label formatting
+        run: node --test tests/sources-label-format.test.mjs
       - name: Verify public PWA contract
         run: |
           node -e "const m=require('./public/manifest.json'); if(m.display!=='standalone'||!m.start_url||!m.icons?.length) process.exit(1)"
