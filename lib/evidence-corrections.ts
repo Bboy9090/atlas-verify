@@ -25,6 +25,16 @@ export interface AppliedEvidenceCorrection {
   resolvedAt: string | null
 }
 
+function normalizeEffectiveValue(value: unknown): string {
+  if (typeof value === 'string') return value.trim().toLowerCase()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).toLowerCase()
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
 function timestamp(value: Date | string | null | undefined): number {
   if (!value) return 0
   const time = new Date(value).getTime()
@@ -80,6 +90,7 @@ export function applyResolvedEvidenceCorrections(
     return {
       ...fact,
       value: correction.effectiveValue,
+      normalizedValue: normalizeEffectiveValue(correction.effectiveValue),
     }
   })
 
