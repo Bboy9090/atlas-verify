@@ -19,6 +19,7 @@ model User {
   evidenceDisputes EvidenceDispute[]
   reviewedSuppressionRequests SuppressionRequest[] @relation("SuppressionReviewer")
   subjectMonitors SubjectMonitor[]
+  billingAccount BillingAccount?
 }
 
 model Case {
@@ -200,4 +201,21 @@ model AuditLog {
   @@index([userId])
   @@index([subjectId])
   @@index([action])
+}
+
+
+model BillingAccount {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  stripePriceId        String?
+  status               String   @default("inactive")
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([status])
 }
