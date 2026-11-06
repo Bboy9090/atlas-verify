@@ -147,6 +147,19 @@ The app opens full-screen like a native app with its own home-screen icon. No Ap
 
 ---
 
+## Optional Stripe billing foundation
+
+Subscription plumbing is intentionally disabled until production Stripe credentials and an explicit Stripe Price ID are configured. The application does not hard-code a dollar amount and does not gate existing features merely because this integration exists.
+
+Required runtime variables when billing is enabled:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_ID`
+- an HTTPS `NEXT_PUBLIC_BASE_URL` or `NEXTAUTH_URL`
+
+The webhook endpoint is `/api/billing/webhook`. Checkout completion and subscription lifecycle events reconcile into the local `BillingAccount` record. Fulfillment is webhook-driven rather than trusting the browser redirect.
+
 ## Core Features
 
 * Case management system
