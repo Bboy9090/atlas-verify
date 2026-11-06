@@ -6,13 +6,24 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   FileText, Users, Zap, TrendingUp, Clock, AlertCircle,
-  FolderOpen, CheckCircle, Activity, Download,
+  FolderOpen, CheckCircle, Activity, Download, CreditCard,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { DashboardLayout } from '@/components/dashboard-layout'
+
+interface BillingStatus {
+  configured: boolean
+  billing: null | {
+    status: string
+    priceId: string | null
+    currentPeriodEnd: string | null
+    cancelAtPeriodEnd: boolean
+    canManage: boolean
+  }
+}
 
 interface Stats {
   cases: {
@@ -63,6 +74,8 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [stats, setStats] = useState<Stats | null>(null)
+  const [billing, setBilling] = useState<BillingStatus | null>(null)
+  const [billingBusy, setBillingBusy] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -74,6 +87,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (session) {
       fetchStats()
+      fetchBilling()
     }
   }, [session])
 
@@ -90,6 +104,30 @@ export default function DashboardPage() {
       toast.error('Failed to load dashboard stats')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchBilling = async () => {
+    try {
+      const res = await fetch('/api/billing/status', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json() as BillingStatus
+      setBilling(data)
+    } catch {
+      // Billing is optional; dashboard analytics should still load if it is unavailable.
+    }
+  }
+
+  const handleBillingAction = async (action: 'checkout' | 'portal') => {
+    setBillingBusy(true)
+    try {
+      const res = await fetch(`/api/billing/${action}`, { method: 'POST' })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) throw new Error(data.error || 'Billing action failed')
+      window.location.assign(data.url)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Billing action failed')
+      setBillingBusy(false)
     }
   }
 
@@ -152,6 +190,45 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
+
+        {billing?.configured && (
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-white text-base flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-emerald-400" />
+                Billing
+              </CardTitle>
+              <CardDescription className="text-slate-400">
+                Subscription billing is handled securely by Stripe. Pricing is shown in Stripe Checkout.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm text-slate-300">
+                  Status: <span className="font-semibold capitalize">{billing.billing?.status || 'not subscribed'}</span>
+                </p>
+                {billing.billing?.currentPeriodEnd && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Current period ends {new Date(billing.billing.currentPeriodEnd).toLocaleDateString()}
+                    {billing.billing.cancelAtPeriodEnd ? ' · cancels at period end' : ''}
+                  </p>
+                )}
+              </div>
+              <Button
+                disabled={billingBusy}
+                onClick={() => handleBillingAction(billing.billing?.canManage ? 'portal' : 'checkout')}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                {billingBusy
+                  ? 'Opening…'
+                  : billing.billing?.canManage
+                    ? 'Manage Subscription'
+                    : 'View Plans'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
