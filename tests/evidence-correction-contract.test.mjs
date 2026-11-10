@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 
 const helper = fs.readFileSync('lib/evidence-corrections.ts', 'utf8')
 const reportRoute = fs.readFileSync('app/api/cases/[id]/report/route.ts', 'utf8')
+const reportLoader = fs.readFileSync('lib/case-report-server.ts', 'utf8')
 const evidenceRoute = fs.readFileSync(
   'app/api/cases/[id]/subjects/[subjectId]/evidence/route.ts',
   'utf8',
@@ -32,10 +33,11 @@ test('resolved correction overlay requires an accepted requested value', () => {
   assert.match(helper, /normalizedValue: normalizeEffectiveValue\(correction\.effectiveValue\)/)
 })
 
-test('case reports derive corrected facts and bind a correction ledger into the receipt body', () => {
-  assert.match(reportRoute, /where: \{ userId, status: 'resolved' \}/)
-  assert.match(reportRoute, /applyResolvedEvidenceCorrections\(rawFacts\)/)
-  assert.match(reportRoute, /evidenceCorrections: corrected\.corrections/)
+test('case reports derive corrected facts through the shared report loader and bind a correction ledger into the receipt body', () => {
+  assert.match(reportRoute, /loadCaseReport\(id, userId\)/)
+  assert.match(reportLoader, /where: \{ userId: ownerId, status: 'resolved' \}/)
+  assert.match(reportLoader, /applyResolvedEvidenceCorrections\(rawFacts\)/)
+  assert.match(reportLoader, /evidenceCorrections: corrected\.corrections/)
   assert.match(reportBuilder, /evidenceCorrections: subject\.evidenceCorrections \?\? \[\]/)
   assert.match(reportBuilder, /appliedCorrectionCount/)
   assert.match(reportBuilder, /original source evidence remains immutable/)

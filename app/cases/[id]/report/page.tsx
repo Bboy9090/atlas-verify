@@ -14,6 +14,8 @@ import {
   Database,
   Users,
   Fingerprint,
+  Share2,
+  Trash2,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
@@ -87,6 +89,13 @@ interface ReportSubject {
     corroborationCount: number
     conflictCount: number
   }>
+}
+
+interface CaseShareSummary {
+  id: string
+  expiresAt: string
+  revokedAt: string | null
+  createdAt: string
 }
 
 interface CaseReport {
@@ -183,6 +192,10 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
   const [report, setReport] = useState<CaseReport | null>(null)
   const verifyInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(true)
+  const [shares, setShares] = useState<CaseShareSummary[]>([])
+  const [shareHours, setShareHours] = useState(24)
+  const [sharing, setSharing] = useState(false)
+  const [latestShareUrl, setLatestShareUrl] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -206,6 +219,61 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
 
     load()
   }, [status, resolved.id])
+
+  const loadShares = async () => {
+    try {
+      const response = await fetch(`/api/cases/${resolved.id}/shares`, { cache: 'no-store' })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body.error || 'Failed to load case shares')
+      setShares(body.shares || [])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load case shares')
+    }
+  }
+
+  useEffect(() => {
+    if (status === 'authenticated') void loadShares()
+  }, [status, resolved.id])
+
+  const createShare = async () => {
+    if (sharing) return
+    setSharing(true)
+    try {
+      const response = await fetch(`/api/cases/${resolved.id}/shares`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiresHours: shareHours }),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body.error || 'Failed to create case share')
+      const url = new URL(body.path, window.location.origin).toString()
+      setLatestShareUrl(url)
+      await loadShares()
+
+      try {
+        await navigator.clipboard.writeText(url)
+        toast.success('Read-only share link copied. The token cannot be recovered later.')
+      } catch {
+        toast.warning('Share created. Clipboard access was unavailable, so copy the one-time link shown below.')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create case share')
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  const revokeShare = async (shareId: string) => {
+    try {
+      const response = await fetch(`/api/cases/${resolved.id}/shares/${shareId}`, { method: 'DELETE' })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body.error || 'Failed to revoke case share')
+      toast.success('Case share revoked')
+      await loadShares()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to revoke case share')
+    }
+  }
 
   const downloadJson = () => {
     if (!report) return
@@ -299,6 +367,89 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
             <Printer className="mr-2 h-4 w-4" /> Print / Save PDF
           </Button>
         </div>
+
+        <Card className="border-cyan-500/20 bg-cyan-500/5 print:hidden">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-cyan-100">
+              <Share2 className="h-4 w-4" /> Read-only case sharing
+            </CardTitle>
+            <CardDescription className="text-slate-400">
+              Create an expiring link to this suppression-aware, correction-aware report. Links are read-only and revocable.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs text-slate-400" htmlFor="share-hours">Expires in</label>
+              <input
+                id="share-hours"
+                type="number"
+                min={1}
+                max={168}
+                value={shareHours}
+                onChange={event => setShareHours(Math.max(1, Math.min(168, Number(event.target.value) || 24)))}
+                className="h-9 w-24 rounded-md border border-slate-600 bg-slate-900 px-3 text-sm text-white"
+              />
+              <span className="text-xs text-slate-500">hours (max 168)</span>
+              <Button size="sm" onClick={createShare} disabled={sharing}>
+                <Share2 className="mr-2 h-4 w-4" /> {sharing ? 'Creating…' : 'Create & copy link'}
+              </Button>
+            </div>
+            {latestShareUrl && (
+              <div className="rounded-lg border border-cyan-500/30 bg-slate-950/70 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-cyan-300">One-time share link</div>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={latestShareUrl}
+                    readOnly
+                    aria-label="One-time share link"
+                    className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-200"
+                    onFocus={event => event.currentTarget.select()}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(latestShareUrl)
+                        toast.success('Share link copied')
+                      } catch {
+                        toast.info('Clipboard access is unavailable. Select and copy the link manually.')
+                      }
+                    }}
+                  >
+                    Copy link
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-amber-300">
+                  Save this URL now. The token is not stored in retrievable form and will not be shown again after you leave this page.
+                </p>
+              </div>
+            )}
+            <div className="space-y-2">
+              {shares.length === 0 ? (
+                <p className="text-xs text-slate-500">No case share links created yet.</p>
+              ) : shares.map(share => {
+                const expired = new Date(share.expiresAt).getTime() <= Date.now()
+                const inactive = Boolean(share.revokedAt) || expired
+                return (
+                  <div key={share.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+                    <div className="text-xs text-slate-400">
+                      <div>{new Date(share.createdAt).toLocaleString()}</div>
+                      <div className="mt-1">
+                        {share.revokedAt ? 'Revoked' : expired ? 'Expired' : `Expires ${new Date(share.expiresAt).toLocaleString()}`}
+                      </div>
+                    </div>
+                    {!inactive && (
+                      <Button size="sm" variant="ghost" onClick={() => revokeShare(share.id)}>
+                        <Trash2 className="mr-2 h-4 w-4 text-red-300" /> Revoke
+                      </Button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="border-slate-700 bg-slate-800/50 print:border-slate-300 print:bg-white">
           <CardHeader>
