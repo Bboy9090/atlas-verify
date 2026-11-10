@@ -195,6 +195,7 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
   const [shares, setShares] = useState<CaseShareSummary[]>([])
   const [shareHours, setShareHours] = useState(24)
   const [sharing, setSharing] = useState(false)
+  const [latestShareUrl, setLatestShareUrl] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -246,9 +247,15 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'Failed to create case share')
       const url = new URL(body.path, window.location.origin).toString()
-      await navigator.clipboard.writeText(url)
-      toast.success('Read-only share link copied. The token cannot be recovered later.')
+      setLatestShareUrl(url)
       await loadShares()
+
+      try {
+        await navigator.clipboard.writeText(url)
+        toast.success('Read-only share link copied. The token cannot be recovered later.')
+      } catch {
+        toast.warning('Share created. Clipboard access was unavailable, so copy the one-time link shown below.')
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create case share')
     } finally {
@@ -387,6 +394,37 @@ export default function CaseReportPage({ params }: { params: Promise<{ id: strin
                 <Share2 className="mr-2 h-4 w-4" /> {sharing ? 'Creating…' : 'Create & copy link'}
               </Button>
             </div>
+            {latestShareUrl && (
+              <div className="rounded-lg border border-cyan-500/30 bg-slate-950/70 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-cyan-300">One-time share link</div>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={latestShareUrl}
+                    readOnly
+                    aria-label="One-time share link"
+                    className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-200"
+                    onFocus={event => event.currentTarget.select()}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(latestShareUrl)
+                        toast.success('Share link copied')
+                      } catch {
+                        toast.info('Clipboard access is unavailable. Select and copy the link manually.')
+                      }
+                    }}
+                  >
+                    Copy link
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-amber-300">
+                  Save this URL now. The token is not stored in retrievable form and will not be shown again after you leave this page.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               {shares.length === 0 ? (
                 <p className="text-xs text-slate-500">No case share links created yet.</p>
