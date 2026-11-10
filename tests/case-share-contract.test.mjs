@@ -8,6 +8,8 @@ const revokeRoute = fs.readFileSync('app/api/cases/[id]/shares/[shareId]/route.t
 const publicRoute = fs.readFileSync('app/api/share/case/[token]/route.ts', 'utf8')
 const helper = fs.readFileSync('lib/case-share.ts', 'utf8')
 const reportLoader = fs.readFileSync('lib/case-report-server.ts', 'utf8')
+const publicLayout = fs.readFileSync('app/share/case/[token]/layout.tsx', 'utf8')
+const reportPage = fs.readFileSync('app/cases/[id]/report/page.tsx', 'utf8')
 
 test('case shares store only token hashes with expiry and revocation', () => {
   assert.match(schema, /model CaseShare/)
@@ -36,4 +38,19 @@ test('shared reports use the same suppression-aware loader as owner exports', ()
   assert.match(reportLoader, /loadApprovedSuppressionHashes/)
   assert.match(reportLoader, /!isSubjectSuppressed/)
   assert.match(revokeRoute, /REVOKE_CASE_SHARE/)
+})
+
+
+test('public share document itself is non-indexable', () => {
+  assert.match(publicLayout, /robots/)
+  assert.match(publicLayout, /index: false/)
+  assert.match(publicLayout, /follow: false/)
+  assert.match(publicLayout, /noimageindex: true/)
+})
+
+test('one-time share URL survives clipboard denial for manual copying', () => {
+  assert.match(reportPage, /latestShareUrl/)
+  assert.match(reportPage, /setLatestShareUrl\(url\)/)
+  assert.match(reportPage, /Clipboard access was unavailable/)
+  assert.match(reportPage, /aria-label="One-time share link"/)
 })
