@@ -35,7 +35,7 @@ test('resolved correction overlay requires an accepted requested value', () => {
 
 test('case reports derive corrected facts through the shared report loader and bind a correction ledger into the receipt body', () => {
   assert.match(reportRoute, /loadCaseReport\(id, userId\)/)
-  assert.match(reportLoader, /where: \{ userId, status: 'resolved' \}/)
+  assert.match(reportLoader, /where: \{ userId: ownerId, status: 'resolved' \}/)
   assert.match(reportLoader, /applyResolvedEvidenceCorrections\(rawFacts\)/)
   assert.match(reportLoader, /evidenceCorrections: corrected\.corrections/)
   assert.match(reportBuilder, /evidenceCorrections: subject\.evidenceCorrections \?\? \[\]/)
