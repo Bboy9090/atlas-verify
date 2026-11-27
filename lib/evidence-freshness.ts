@@ -49,13 +49,18 @@ export function buildEvidenceFreshnessLedger(
   facts: EvidenceFactLike[],
   now = new Date(),
 ): EvidenceFreshnessLedger {
+  if (!Number.isFinite(now.getTime())) throw new RangeError('Invalid ledger reference time')
   const items = facts.map((fact): EvidenceFreshnessItem => {
     const observed = validDate(fact.observedAt)
     const retrieved = validDate(fact.retrievedAt)
-    const reference = observed ?? retrieved
-    const basis: EvidenceFreshnessBasis = observed ? 'observed' : retrieved ? 'retrieved' : 'unknown'
-    const ageDays = reference
-      ? Math.max(0, Math.floor((now.getTime() - reference.getTime()) / DAY_MS))
+    // Retrieval proves when a record was acquired, not when its content was true.
+    const validObserved = observed && observed.getTime() <= now.getTime() &&
+      (!retrieved || observed.getTime() <= retrieved.getTime()) ? observed : null
+    const validRetrieved = retrieved && retrieved.getTime() <= now.getTime() ? retrieved : null
+    const reference = validObserved ?? validRetrieved
+    const basis: EvidenceFreshnessBasis = validObserved ? 'observed' : validRetrieved ? 'retrieved' : 'unknown'
+    const ageDays = validObserved
+      ? Math.floor((now.getTime() - validObserved.getTime()) / DAY_MS)
       : null
 
     return {
@@ -78,10 +83,12 @@ export function buildEvidenceFreshnessLedger(
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   })
 
-  const latestReference = items.find(item => item.timestamp)?.timestamp ?? null
+  const latestReference = items
+    .filter(item => item.basis === 'observed')
+    .map(item => item.timestamp!)[0] ?? null
   const latestRetrieved = facts
     .map(fact => validDate(fact.retrievedAt))
-    .filter((date): date is Date => date !== null)
+    .filter((date): date is Date => date !== null && date.getTime() <= now.getTime())
     .sort((a, b) => b.getTime() - a.getTime())[0]?.toISOString() ?? null
 
   return {

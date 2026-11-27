@@ -8,6 +8,7 @@ import { resolveEntityEvidence } from '@/lib/entity-resolution'
 import { buildEvidenceFreshnessLedger } from '@/lib/evidence-freshness'
 import { rankDuplicateSubjects } from '@/lib/subject-duplicate-review'
 import { applyResolvedEvidenceCorrections } from '@/lib/evidence-corrections'
+import { isSubjectSuppressed, loadApprovedSuppressionHashes } from '@/lib/subject-suppression'
 
 interface RouteParams {
   params: Promise<{ id: string; subjectId: string }>
@@ -63,6 +64,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   if (!subject) {
     return NextResponse.json({ error: 'Subject not found' }, { status: 404 })
+  }
+
+  const primarySuppression = await loadApprovedSuppressionHashes([subject])
+  if (isSubjectSuppressed(subject, primarySuppression)) {
+    return NextResponse.json({ error: 'Subject not found' }, { status: 404, headers: { 'Cache-Control': 'no-store, private' } })
   }
 
   const rawFacts = subject.enrichmentResults.flatMap(result =>
@@ -126,6 +132,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
     take: 100,
   })
 
+  const siblingSuppression = await loadApprovedSuppressionHashes(siblingSubjects)
+  const visibleSiblings = siblingSubjects.filter(candidate => !isSubjectSuppressed(candidate, siblingSuppression))
+
   const duplicateReview = rankDuplicateSubjects(
     {
       id: subject.id,
@@ -138,7 +147,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       state: subject.state,
       facts,
     },
-    siblingSubjects.map(candidate => {
+    visibleSiblings.map(candidate => {
       const candidateRawFacts = candidate.enrichmentResults.flatMap(result =>
         result.evidenceFacts.map(fact => ({
           id: fact.id,
@@ -197,9 +206,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
     duplicateReviewPolicy: {
       autoMerge: false,
       identityConfirmed: false,
-      description: 'Possible duplicates are review leads only. AtlasVerify never merges subjects automatically.',
+      description: 'Bounded review of up to 100 saved sibling records, excluding approved suppressed subjects. No identity confirmation or automatic merging. At most ten review leads are shown.',
     },
     evidenceFactCount: facts.length,
     appliedCorrectionCount: correctedPrimary.corrections.length,
-  })
+  }, { headers: { 'Cache-Control': 'no-store, private' } })
 }
