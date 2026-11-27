@@ -7,6 +7,8 @@ import prisma from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getProvider, getAllProviders } from '@/providers'
+import { providerAllowed } from '@/lib/provider-readiness'
+import { isSubjectSuppressed, loadApprovedSuppressionHashes } from '@/lib/subject-suppression'
 
 interface RouteParams {
   params: Promise<{ id: string; subjectId: string }>
@@ -49,19 +51,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Subject not found' }, { status: 404 })
     }
 
+    const approved = await loadApprovedSuppressionHashes([subject])
+    if (isSubjectSuppressed(subject, approved)) {
+      return NextResponse.json({ error: 'Subject is suppressed from live enrichment' }, { status: 403, headers: { 'Cache-Control': 'no-store, private' } })
+    }
+
     const body = await request.json()
     const { providerName } = body
 
     let providers = getAllProviders()
 
-    const allowSyntheticProviders =
-      process.env.NODE_ENV !== 'production' ||
-      process.env.ALLOW_SYNTHETIC_PROVIDERS === 'true'
-
-    providers = providers.filter(provider =>
-      provider.sourcePolicy.production ||
-      (allowSyntheticProviders && provider.sourcePolicy.sourceKind === 'synthetic')
-    )
+    providers = providers.filter(provider => providerAllowed(provider.sourcePolicy, process.env))
     
     // If specific provider requested
     if (providerName) {
@@ -72,9 +72,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           { status: 400 }
         )
       }
-      const allowed =
-        provider.sourcePolicy.production ||
-        (allowSyntheticProviders && provider.sourcePolicy.sourceKind === 'synthetic')
+      const allowed = providerAllowed(provider.sourcePolicy, process.env)
 
       if (!allowed) {
         return NextResponse.json(

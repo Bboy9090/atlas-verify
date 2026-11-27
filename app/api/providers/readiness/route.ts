@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { configurationState, summarizeConfiguration } from '@/lib/provider-readiness'
 
 type IntegrationStatus = 'configured' | 'missing_configuration' | 'public_no_key'
 
@@ -8,14 +9,11 @@ interface IntegrationReadiness {
   id: string
   label: string
   status: IntegrationStatus
+  verification: 'not_tested'
   requiredVariables: string[]
   missingVariables: string[]
   coverage: string
   sourceKind: 'licensed_api' | 'public_web' | 'public_record'
-}
-
-function configured(...names: string[]) {
-  return names.every(name => Boolean(process.env[name]?.trim()))
 }
 
 function item(
@@ -25,28 +23,7 @@ function item(
   coverage: string,
   sourceKind: IntegrationReadiness['sourceKind'],
 ): IntegrationReadiness {
-  if (requiredVariables.length === 0) {
-    return {
-      id,
-      label,
-      status: 'public_no_key',
-      requiredVariables,
-      missingVariables: [],
-      coverage,
-      sourceKind,
-    }
-  }
-
-  const missingVariables = requiredVariables.filter(name => !process.env[name]?.trim())
-  return {
-    id,
-    label,
-    status: configured(...requiredVariables) ? 'configured' : 'missing_configuration',
-    requiredVariables,
-    missingVariables,
-    coverage,
-    sourceKind,
-  }
+  return { id, label, requiredVariables, coverage, sourceKind, ...configurationState(requiredVariables, process.env) }
 }
 
 export async function GET() {
@@ -163,22 +140,12 @@ export async function GET() {
     ),
   ]
 
-  const configuredCount = integrations.filter(
-    integration => integration.status === 'configured' || integration.status === 'public_no_key',
-  ).length
-
   return NextResponse.json({
     integrations,
-    summary: {
-      operational: configuredCount,
-      total: integrations.length,
-      missingConfiguration: integrations.filter(
-        integration => integration.status === 'missing_configuration',
-      ).length,
-    },
+    summary: summarizeConfiguration(integrations),
     security: {
       secretValuesReturned: false,
-      note: 'Only configuration names and boolean readiness are exposed.',
+      note: 'Only configuration names and presence are exposed. No network, entitlement, license or accuracy test was performed.',
     },
-  })
+  }, { headers: { 'Cache-Control': 'no-store, private' } })
 }
