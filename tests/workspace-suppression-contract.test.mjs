@@ -14,6 +14,7 @@ const monitorCheckRoute = fs.readFileSync(
 const monitoringRoute = fs.readFileSync('app/api/monitoring/route.ts', 'utf8');
 const reportRoute = fs.readFileSync('app/api/cases/[id]/report/route.ts', 'utf8');
 const helper = fs.readFileSync('lib/subject-suppression.ts', 'utf8');
+const reportLoader = fs.readFileSync('lib/case-report-server.ts', 'utf8');
 
 test('approved suppression matching is centralized and one-way hashed', () => {
   assert.match(helper, /hashSuppressionIdentifier/);
@@ -59,15 +60,20 @@ test('monitoring index omits suppressed subjects without deleting case evidence'
   assert.doesNotMatch(monitoringRoute, /subjectMonitor\.delete/);
 });
 
-test('case report export omits suppressed subjects before report construction', () => {
-  const suppressionPos = reportRoute.indexOf('loadApprovedSuppressionHashes(caseData.subjects)');
-  const visiblePos = reportRoute.indexOf('const visibleSubjects = caseData.subjects.filter');
-  const buildPos = reportRoute.indexOf('const report = buildCaseReport');
+test('case report delegates to owner-scoped shared loader which filters before report construction', () => {
+  assert.match(reportRoute, /import \{ loadCaseReport \} from '@\/lib\/case-report-server'/);
+  assert.match(reportRoute, /const loaded = await loadCaseReport\(id, userId\)/);
+  assert.match(reportRoute, /const \{ report, suppressedSubjectCount \} = loaded/);
+  assert.match(reportRoute, /NextResponse\.json\(report,/);
+  assert.match(reportLoader, /where: \{ id: caseId, userId: ownerId \}/);
+  const suppressionPos = reportLoader.indexOf('loadApprovedSuppressionHashes(caseData.subjects)');
+  const visiblePos = reportLoader.indexOf('const visibleSubjects = caseData.subjects.filter');
+  const buildPos = reportLoader.indexOf('const report = buildCaseReport');
   assert.ok(suppressionPos > 0);
   assert.ok(visiblePos > suppressionPos);
   assert.ok(buildPos > visiblePos);
-  assert.match(reportRoute, /subjects: visibleSubjects\.map/);
-  assert.match(reportRoute, /suppressedSubjectCount/);
-  assert.doesNotMatch(reportRoute, /subjects: caseData\.subjects\.map/);
+  assert.match(reportLoader, /!isSubjectSuppressed\(subject, approvedSuppressionHashes\)/);
+  assert.match(reportLoader, /subjects: visibleSubjects\.map/);
+  assert.match(reportLoader, /return \{ report, suppressedSubjectCount \}/);
+  assert.doesNotMatch(reportLoader, /subjects: caseData\.subjects\.map/);
 });
-

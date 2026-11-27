@@ -11,6 +11,7 @@ on:
       - 'app/api/monitoring/route.ts'
       - 'lib/suppression.ts'
       - 'lib/subject-suppression.ts'
+      - 'lib/case-report-server.ts'
       - 'tests/workspace-suppression-contract.test.mjs'
       - '.github/workflows/workspace-suppression-contract.yml'
   workflow_dispatch:
