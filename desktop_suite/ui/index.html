@@ -100,13 +100,13 @@
 <header>
   <div class="brand">
     <img src="/assets/icon_256.png" alt="Icon">
-    <div><h1>Bobby's Case File</h1><small>v1.1.0 • Windows Authenticode + SHA-256 Chain of Custody</small></div>
+    <div><h1>Bobby's Case File</h1><small>v1.1.0 • Local case records and SHA-256 evidence receipts</small></div>
   </div>
   <div class="tabs">
       <button class="tab active" onclick="openTab('cases',this)">Case Dossiers</button>
-      <button class="tab" onclick="openTab('ev',this)">Authenticode &amp; SHA-256 Evidence</button>
+      <button class="tab" onclick="openTab('ev',this)">Local Evidence</button>
       <button class="tab" onclick="openTab('os',this)">OS Exclusive</button></div>
-  <div class="os-pill" id="os-pill">WINDOWS EDITION</div>
+  <div class="os-pill" id="os-pill">HOST CHECK PENDING</div>
 </header>
 
 <main><div class="wrap">
@@ -116,25 +116,22 @@
           <div style="display:grid;grid-template-columns:1fr 2fr auto;gap:10px;">
             <input id="c-title" placeholder="Case Title">
             <input id="c-sum" placeholder="Lawful investigation scope & provenance notes">
-            <button class="btn" onclick="addCase()">Create Case</button>
+            <button id="create-case" class="btn" onclick="addCase()">Create Case</button>
           </div>
         </div>
-        <div class="grid" id="c-list"></div>
+        <p id="case-status" role="status">Loading cases…</p><p class="sub">Authorized research only. Not for regulated eligibility decisions. External lookup unavailable in this desktop edition.</p><div class="grid" id="c-list"></div>
       </section>
       <section id="tab-ev" class="panel">
         <div class="card">
-          <h3>Attach &amp; Cryptographically Verify Local Evidence File (Windows Authenticode + SHA-256)</h3>
-          <div style="display:flex;gap:10px;"><input id="ev-path" placeholder="Full path to local document, binary, or image"><button class="btn" onclick="verifyEv()">Verify &amp; Log to Latest Case</button></div>
-          <pre id="ev-out" style="margin-top:12px;">Ready to hash and check OS digital signatures.</pre>
+          <h3>Attach Local Evidence to Selected Case (SHA-256)</h3>
+          <label for="ev-case">Destination case</label><select id="ev-case"><option value="">Select a case explicitly</option></select><div style="display:flex;gap:10px;"><input id="ev-path" placeholder="Full path to local document, binary, or image"><button id="verify-evidence" class="btn" onclick="verifyEv()">Hash &amp; Attach to Selected Case</button></div>
+          <pre id="ev-out" style="margin-top:12px;">Select a case and file. A hash receipt does not prove identity or digital signature validity.</pre>
         </div>
       </section>
       <section id="tab-os" class="panel"><div class="grid" id="os-grid"></div></section></div></main>
 
 <script>
-(function(){
-  let p = 18; const b = document.getElementById('sbar');
-  const iv = setInterval(()=>{ p = Math.min(100, p+24); b.style.width = p+'%'; if(p>=100){ clearInterval(iv); setTimeout(()=>document.getElementById('splash').classList.add('hide'), 280); }}, 120);
-})();
+document.getElementById('splash').classList.add('hide');
 
 function openTab(id, btn){
   document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
@@ -145,7 +142,7 @@ function openTab(id, btn){
 
 async function loadOsParity(containerId){
   const p = await (await fetch('/api/platform')).json();
-  document.getElementById('os-pill').textContent = (p.os_label || 'WINDOWS').toUpperCase() + ' EDITION';
+  document.getElementById('os-pill').textContent = (p.os_label || 'UNKNOWN').toUpperCase() + ' EDITION';
   const el = document.getElementById(containerId);
   if(!el) return;
   const caps = p.exclusive_capabilities || {};
@@ -156,28 +153,58 @@ async function loadOsParity(containerId){
     </div>`).join('');
 }
 
+
+    const el=id=>document.getElementById(id);
+    function node(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
+    async function api(path,options){
+      const response=await fetch(path,options);const data=await response.json();
+      if(!response.ok||data.ok===false)throw new Error(data.error||'Request failed');
+      return data;
+    }
     async function loadCases(){
-      const d = await (await fetch('/api/cases')).json();
-      document.getElementById('c-list').innerHTML = (d.cases||[]).map(c=>`
-        <div class="card">
-          <h3>${c.title} <span class="badge ok">${c.case_id}</span></h3>
-          <div class="sub">${c.created}</div>
-          <p style="margin:8px 0;font-size:13px;">${c.summary}</p>
-          <div class="sub">Verified Evidence Items: <b>${(c.evidence||[]).length}</b></div>
-        </div>`).join('');
+      try{
+        const d=await api('/api/cases');
+        if(!Array.isArray(d.cases))throw new Error('Invalid case response');
+        const selected=el('ev-case').value;
+        const counts=new Map();for(const c of d.cases)counts.set(c.case_id,(counts.get(c.case_id)||0)+1);
+        const options=[new Option('Select a case explicitly','')];
+        const cards=d.cases.map(c=>{
+          const card=node('div','');card.className='card';
+          card.append(node('h3',c.title),node('p',c.case_id),node('p',c.created),node('p',c.summary),node('p','Stored evidence records: '+c.evidence.length));
+          if(counts.get(c.case_id)===1)options.push(new Option(c.title+' — '+c.case_id,c.case_id));
+          else card.append(node('p','Duplicate legacy identifier: attachment blocked until reviewed.'));
+          return card;
+        });
+        el('c-list').replaceChildren(...cards);el('ev-case').replaceChildren(...options);
+        if(options.some(o=>o.value===selected))el('ev-case').value=selected;
+        el('case-status').textContent='Local cases loaded. Live external lookup is not integrated in this desktop edition.';
+      }catch(e){el('case-status').textContent='Load failed: '+e.message;el('ev-case').replaceChildren(new Option('Cases unavailable',''));}
     }
     async function addCase(){
-      const title = document.getElementById('c-title').value.trim(); if(!title) return;
-      await fetch('/api/cases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,summary:document.getElementById('c-sum').value})});
-      document.getElementById('c-title').value=''; document.getElementById('c-sum').value=''; loadCases();
+      const title=el('c-title').value,summary=el('c-sum').value;
+      el('create-case').disabled=true;
+      try{
+        const d=await api('/api/cases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,summary})});
+        if(d.ok!==true||!d.case?.case_id)throw new Error('Missing case receipt');
+        if(el('c-title').value===title)el('c-title').value='';
+        if(el('c-sum').value===summary)el('c-sum').value='';
+        await loadCases();
+      }catch(e){el('case-status').textContent='Creation not confirmed: '+e.message+' — input retained.';}
+      finally{el('create-case').disabled=false;}
     }
     async function verifyEv(){
-      const path = document.getElementById('ev-path').value.trim(); if(!path) return;
-      const r = await (await fetch('/api/verify-evidence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})})).json();
-      document.getElementById('ev-out').textContent = JSON.stringify(r, null, 2);
-      loadCases();
+      const path=el('ev-path').value.trim(),case_id=el('ev-case').value;
+      if(!path||!case_id){el('ev-out').textContent='Choose a specific case and local file.';return;}
+      el('verify-evidence').disabled=true;
+      try{
+        const d=await api('/api/verify-evidence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path,case_id})});
+        if(d.persisted!==true||d.case_id!==case_id||d.receipt?.case_id!==case_id)throw new Error('Missing or mismatched persistence receipt');
+        el('ev-out').textContent=JSON.stringify(d.receipt,null,2);
+        await loadCases();
+      }catch(e){el('ev-out').textContent='Attachment not confirmed: '+e.message+' — inspect selected case before retrying.';}
+      finally{el('verify-evidence').disabled=false;}
     }
-    loadCases(); loadOsParity('os-grid');
+    loadCases();loadOsParity('os-grid').catch(()=>{el('os-pill').textContent='HOST UNAVAILABLE';});
 </script>
 </body>
 </html>
