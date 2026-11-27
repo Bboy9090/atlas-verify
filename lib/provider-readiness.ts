@@ -20,3 +20,16 @@ export function summarizeConfiguration(items: readonly { status: ConfigurationSt
     liveVerificationPerformed: false,
   }
 }
+
+/** Synthetic adapters never enter production, even with inconsistent policy flags. */
+export function providerAllowed(
+  policy: { sourceKind: string; production: boolean },
+  env: Readonly<Record<string, string | undefined>>,
+) {
+  if (policy.sourceKind === 'synthetic') {
+    return env.NODE_ENV === 'development' || env.NODE_ENV === 'test'
+      ? env.ALLOW_SYNTHETIC_PROVIDERS === 'true'
+      : false
+  }
+  return policy.production === true
+}
