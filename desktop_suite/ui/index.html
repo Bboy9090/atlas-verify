@@ -131,10 +131,7 @@
       <section id="tab-os" class="panel"><div class="grid" id="os-grid"></div></section></div></main>
 
 <script>
-(function(){
-  let p = 18; const b = document.getElementById('sbar');
-  const iv = setInterval(()=>{ p = Math.min(100, p+24); b.style.width = p+'%'; if(p>=100){ clearInterval(iv); setTimeout(()=>document.getElementById('splash').classList.add('hide'), 280); }}, 120);
-})();
+document.getElementById('splash').classList.add('hide');
 
 function openTab(id, btn){
   document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
@@ -191,7 +188,7 @@ async function loadOsParity(containerId){
         if(d.ok!==true||!d.case?.case_id)throw new Error('Missing case receipt');
         if(el('c-title').value===title)el('c-title').value='';
         if(el('c-sum').value===summary)el('c-sum').value='';
-        await loadCases();el('ev-case').value=d.case.case_id;
+        await loadCases();
       }catch(e){el('case-status').textContent='Creation not confirmed: '+e.message+' — input retained.';}
       finally{el('create-case').disabled=false;}
     }
@@ -207,7 +204,6 @@ async function loadOsParity(containerId){
       }catch(e){el('ev-out').textContent='Attachment not confirmed: '+e.message+' — inspect selected case before retrying.';}
       finally{el('verify-evidence').disabled=false;}
     }
-    document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openTab('cases',document.querySelector('.tab'));el('c-title').focus();}});
     loadCases();loadOsParity('os-grid').catch(()=>{el('os-pill').textContent='HOST UNAVAILABLE';});
 </script>
 </body>
