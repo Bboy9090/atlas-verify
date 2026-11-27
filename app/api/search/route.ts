@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
         take: 10,
       },
     },
+    orderBy: { id: 'asc' },
     take: 250,
   })
 
@@ -136,13 +137,16 @@ export async function GET(request: NextRequest) {
     coverage: {
       workspace: {
         enabled: true,
-        description: 'Searches subjects already stored in your AtlasVerify cases, excluding approved suppressed identifiers.',
+        description: 'Examines up to 250 saved subjects in your own cases; approved suppressed identifiers are excluded. Returns at most 50 matches. Coverage is bounded and not exhaustive.',
+        scannedSubjectCount: subjects.length,
+        scanLimit: 250,
+        resultLimit: 50,
         suppressedSubjectCount,
       },
       externalProviders: {
         enabled: false,
-        description: 'No live licensed/public people-search provider is configured yet.',
+        description: 'This workspace endpoint does not query external providers.',
       },
     },
-  })
+  }, { headers: { 'Cache-Control': 'no-store, private' } })
 }
