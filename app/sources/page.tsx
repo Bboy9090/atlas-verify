@@ -36,6 +36,7 @@ interface IntegrationReadiness {
   id: string
   label: string
   status: 'configured' | 'missing_configuration' | 'public_no_key'
+  verification: 'not_tested'
   requiredVariables: string[]
   missingVariables: string[]
   coverage: string
@@ -43,7 +44,11 @@ interface IntegrationReadiness {
 }
 
 interface ReadinessSummary {
-  operational: number
+  operational: number | null
+  configured: number
+  publicNoKey: number
+  liveVerifiedCount: number
+  liveVerificationPerformed: boolean
   total: number
   missingConfiguration: number
 }
@@ -174,9 +179,9 @@ export default function SourcesPage() {
             <CardHeader>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <CardTitle className="text-white">Provider runtime readiness</CardTitle>
+                  <CardTitle className="text-white">Provider configuration inventory</CardTitle>
                   <CardDescription className="mt-1 text-slate-400">
-                    Server-side configuration presence only. Credential values are never returned to this page.
+                    Configuration presence only. Credential values are never returned. Live availability, account rights, coverage and accuracy have not been tested.
                   </CardDescription>
                 </div>
                 <Badge
@@ -185,19 +190,19 @@ export default function SourcesPage() {
                     ? 'border-green-500/30 text-green-300'
                     : 'border-yellow-500/30 text-yellow-300'}
                 >
-                  {readinessSummary.operational}/{readinessSummary.total} operational
+                  {readinessSummary.configured + readinessSummary.publicNoKey}/{readinessSummary.total} configuration checks satisfied
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {readiness.map(integration => {
-                  const operational = integration.status !== 'missing_configuration'
+                  const configurationPresent = integration.status !== 'missing_configuration'
                   return (
                     <div
                       key={integration.id}
                       className={`rounded-lg border p-3 ${
-                        operational
+                        configurationPresent
                           ? 'border-green-500/20 bg-green-500/5'
                           : 'border-yellow-500/20 bg-yellow-500/5'
                       }`}
@@ -206,7 +211,7 @@ export default function SourcesPage() {
                         <div className="font-medium text-slate-100">{integration.label}</div>
                         <Badge
                           variant="outline"
-                          className={operational
+                          className={configurationPresent
                             ? 'border-green-500/30 text-green-300'
                             : 'border-yellow-500/30 text-yellow-300'}
                         >
@@ -218,6 +223,7 @@ export default function SourcesPage() {
                         </Badge>
                       </div>
                       <p className="mt-2 text-xs leading-5 text-slate-400">{integration.coverage}</p>
+                      <p className="mt-1 text-xs text-slate-400">Live verification: not tested</p>
                       {integration.missingVariables.length > 0 && (
                         <div className="mt-2 text-xs text-yellow-200">
                           Missing: {integration.missingVariables.join(', ')}
@@ -255,7 +261,7 @@ export default function SourcesPage() {
                     ? 'border-green-500/30 text-green-300'
                     : 'border-yellow-500/30 text-yellow-300'}
                 >
-                  {item.ready ? 'Configured' : 'Not configured'}
+                  {item.ready ? 'Adapter registered — unverified' : 'Adapter not registered'}
                 </Badge>
               </CardContent>
             </Card>
@@ -269,8 +275,7 @@ export default function SourcesPage() {
               What “configured” means
             </CardTitle>
             <CardDescription className="text-slate-400">
-              A provider appears as production coverage only when its adapter is registered in the running server.
-              Missing credentials therefore show as a coverage gap rather than a simulated success.
+              Adapter registration and declared production policy do not establish operational coverage. Configuration presence does not prove valid credentials or permission to query. Missing credentials may block an adapter.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -303,7 +308,7 @@ export default function SourcesPage() {
                         ? 'border-green-500/30 text-green-300'
                         : 'border-purple-500/30 text-purple-300'}
                     >
-                      {policy.production ? 'Production' : 'Synthetic / test only'}
+                      {policy.production ? 'Declared production adapter — unverified' : synthetic ? 'Synthetic / test only' : 'Not production-qualified'}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -312,14 +317,14 @@ export default function SourcesPage() {
                     <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
                       <div className="text-xs uppercase tracking-wide text-slate-500">Persistence</div>
                       <div className="mt-1 text-slate-200">
-                        {policy.mayPersist ? 'Provider policy allows persistence' : 'Ephemeral — do not persist provider payload'}
+                        {policy.mayPersist ? 'Adapter declares persistence allowed; terms review required' : 'Ephemeral — do not persist provider payload'}
                       </div>
                     </div>
                     <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
                       <div className="text-xs uppercase tracking-wide text-slate-500">Freshness</div>
                       <div className="mt-1 text-slate-200">
                         {policy.freshnessSeconds === 0
-                          ? 'Fetched live'
+                          ? 'Policy: no cache; live retrieval unverified'
                           : policy.freshnessSeconds
                             ? `Policy TTL: ${policy.freshnessSeconds}s`
                             : 'Provider-defined / not specified'}
@@ -328,7 +333,7 @@ export default function SourcesPage() {
                   </div>
 
                   <div>
-                    <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Permitted purposes</div>
+                    <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Declared purposes</div>
                     <div className="flex flex-wrap gap-2">
                       {policy.allowedPurposes.map(purpose => (
                         <Badge key={purpose} variant="outline" className="border-slate-600 text-slate-300">
