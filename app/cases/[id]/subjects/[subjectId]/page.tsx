@@ -246,7 +246,7 @@ function ProfileSection({
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400">
                   <span>{item.sourceCount} source{item.sourceCount === 1 ? '' : 's'}</span>
                   <span>{item.factCount} evidence fact{item.factCount === 1 ? '' : 's'}</span>
-                  <span>{Math.round(item.averageConfidence * 100)}% avg. confidence</span>
+                  <span>Provider confidence not independently calibrated</span>
                   <span className="inline-flex items-center gap-1">
                     <Clock3 className="h-3 w-3" />
                     Retrieved {new Date(item.latestRetrievedAt).toLocaleDateString()}
@@ -402,7 +402,7 @@ export default function SubjectProfilePage({
           <CardContent>
             {data.duplicateReview.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-700 p-5 text-sm text-slate-500">
-                No bounded phone, email, address, or username overlap was found with other subjects in this case.
+                No review leads returned within the examined records. This does not establish absence of duplicates.
               </div>
             ) : (
               <div className="space-y-3">
@@ -412,7 +412,7 @@ export default function SubjectProfilePage({
                       <div>
                         <div className="font-medium text-white">{review.fullName}</div>
                         <div className="mt-1 text-xs text-slate-500">
-                          {Math.round(review.score * 100)}% bounded identifier similarity · {review.strength}
+                          Review lead · identity unconfirmed
                         </div>
                       </div>
                       <Link href={`/cases/${data.case.id}/subjects/${review.subjectId}`}>
@@ -473,7 +473,7 @@ export default function SubjectProfilePage({
                         : 'border-slate-600 text-slate-400'
                 }
               >
-                {data.resolution.strength} · {Math.round(data.resolution.score * 100)}%
+                Unverified source agreement
               </Badge>
             </div>
           </CardHeader>
@@ -513,7 +513,7 @@ export default function SubjectProfilePage({
                         </Badge>
                       </div>
                       <div className="mt-2 text-xs text-slate-400">
-                        {signal.factCount} facts · {Math.round(signal.averageConfidence * 100)}% avg. confidence · {signal.sources.join(', ')}
+                        {signal.factCount} facts · {signal.sources.join(', ')}
                       </div>
                     </div>
                   ))}
@@ -555,11 +555,11 @@ export default function SubjectProfilePage({
                   Evidence freshness ledger
                 </CardTitle>
                 <CardDescription className="mt-1 text-slate-400">
-                  Freshness uses source observation time when available, otherwise retrieval time. Current means up to {data.freshness.currentThroughDays} days; stale means up to {data.freshness.staleThroughDays} days; older evidence is historical.
+                  Age uses valid source observation time only. Recently retrieved records may describe old facts. Recent observation: up to {data.freshness.currentThroughDays} days; stale: up to {data.freshness.staleThroughDays} days; older: historical. These are age bands, not proof of present accuracy.
                 </CardDescription>
               </div>
               <div className="text-right text-xs text-slate-500">
-                <div>Last seen: {data.freshness.lastSeenAt ? new Date(data.freshness.lastSeenAt).toLocaleString() : 'unknown'}</div>
+                <div>Latest observation: {data.freshness.lastSeenAt ? new Date(data.freshness.lastSeenAt).toLocaleString() : 'unknown'}</div>
                 <div>Last retrieved: {data.freshness.lastRetrievedAt ? new Date(data.freshness.lastRetrievedAt).toLocaleString() : 'unknown'}</div>
               </div>
             </div>
@@ -568,7 +568,7 @@ export default function SubjectProfilePage({
             <div className="grid gap-3 sm:grid-cols-4">
               <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3">
                 <div className="text-2xl font-bold text-green-300">{data.freshness.currentCount}</div>
-                <div className="text-xs uppercase tracking-wide text-slate-500">Current</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Recent observation</div>
               </div>
               <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
                 <div className="text-2xl font-bold text-yellow-300">{data.freshness.staleCount}</div>
@@ -590,7 +590,7 @@ export default function SubjectProfilePage({
                   <div key={item.id || `${item.field}:${item.sourceName}:${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900/70 p-3">
                     <div>
                       <div className="text-sm font-medium text-white">{item.field}</div>
-                      <div className="mt-1 text-xs text-slate-500">{item.sourceName} · {item.basis} timestamp</div>
+                      <div className="mt-1 text-xs text-slate-500">{item.sourceName} · {item.basis === 'retrieved' ? 'retrieved only; observation age unknown' : item.basis === 'observed' ? 'source observation' : 'no valid reference timestamp'}</div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <Badge
@@ -605,7 +605,7 @@ export default function SubjectProfilePage({
                                 : 'border-slate-700 text-slate-500'
                         }
                       >
-                        {item.status}
+                        {item.status === 'current' ? 'recent observation' : item.status}
                       </Badge>
                       <span className="text-slate-500">
                         {item.timestamp ? new Date(item.timestamp).toLocaleDateString() : 'timestamp unavailable'}
